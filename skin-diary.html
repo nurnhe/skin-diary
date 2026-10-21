@@ -396,18 +396,8 @@ function loadLocal() {
   let data = {};
   try { data = JSON.parse(localStorage.getItem(LKEY) || "{}") } catch (e) {}
   state.template = data.template || null; state.days = data.days || {}; state.tplLoaded = true; state.mode = "local";
-  addMakeupRemover();
   setStatus("Your diary is saved in this browser on this device.");
   render();
-}
-/* One-off: KK's diary saved before the makeup remover step gets the balm added to every evening. */
-function addMakeupRemover() {
-  const MKEY = "skin-diary-balm-added", tpl = state.template;
-  try { if (localStorage.getItem(MKEY)) return; localStorage.setItem(MKEY, "1") } catch (e) { return }
-  if (!tpl?.products.some(p => p.id === "p_anua") || tpl.products.some(p => p.id === "p_bojbalm")) return;
-  tpl.products.push({ brand: "Beauty of Joseon", id: "p_bojbalm", kinds: [], name: "Radiance Cleansing Balm", step: 0 });
-  for (const d of Object.values(tpl.week)) d.pm = sortIds(["p_bojbalm", ...d.pm]);
-  persistLocal();
 }
 function persistLocal() { try { localStorage.setItem(LKEY, JSON.stringify({ template: state.template, days: state.days })) } catch (e) {} }
 const chains = {};
@@ -563,8 +553,8 @@ function renderProducts() {
     <form class="glass panel" id="addForm"><h2>Add a <em>product</em></h2>
       <p class="muted" style="margin:-6px 0 0">Type the brand and the full name exactly as it's printed on the packaging.</p>
       <div class="add-form">
-        <label class="field">Brand<input class="input" id="f-brand" placeholder="e.g. Beauty of Joseon"></label>
-        <label class="field" style="grid-column:span 2">Exact product name<input class="input" id="f-name" required placeholder="e.g. Relief Sun: Rice + Probiotics SPF50+"></label>
+        <label class="field">Brand<input class="input" id="f-brand" placeholder="e.g. La Roche-Posay"></label>
+        <label class="field" style="grid-column:span 2">Exact product name<input class="input" id="f-name" required placeholder="e.g. Anthelios UVMune 400 Invisible Fluid SPF 50+"></label>
         <label class="field">Step<select class="input" id="f-step">${Object.entries(STEPS).map(([n, s]) => `<option value="${n}">${s}</option>`).join("")}</select></label>
       </div>
       <div class="kinds-row"><span class="muted">Contains:</span>${Object.entries(KINDS).map(([k, l]) => `<label><input type="checkbox" id="f-k-${k}" value="${k}"> ${l}</label>`).join("")}</div>
@@ -598,7 +588,7 @@ function renderSheet() {
     body = `<div class="sec plain" style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px"><span class="muted">Prefer a spreadsheet? Get the Excel template, fill it in, then import it below.</span><a class="btn small" href="https://nurnhe.github.io/skin-diary/routine-template.xlsx" download target="_blank" rel="noopener">Get template</a></div>
       <div class="sec plain"><label for="imp-text"><h3>Paste your products</h3></label>
         <p class="muted" style="margin:0 0 8px">One product per line, as <b>Brand - Product name</b>. Put them under <b>Morning</b> and <b>Evening</b> headings. Products with no heading go into both, except sunscreen (mornings) and retinol or acids (evenings). Each step is guessed from the name, and you can change it on your shelf.</p>
-        <textarea class="input" id="imp-text" rows="11" style="resize:vertical" placeholder="Morning\nCOSRX - Low pH Good Morning Gel Cleanser\nCeraVe - Moisturising Lotion\nLa Roche-Posay - Anthelios UVMune 400 SPF 50+\n\nEvening\nBanila Co - Clean It Zero Cleansing Balm\nThe Ordinary - Retinal 0.2% Emulsion\nCeraVe - Moisturising Cream">${esc(s.text || "")}</textarea>
+        <textarea class="input" id="imp-text" rows="11" style="resize:vertical" placeholder="Morning\nCOSRX - Low pH Good Morning Gel Cleanser\nEtude - SoonJung 2x Barrier Intensive Cream\nLa Roche-Posay - Anthelios UVMune 400 SPF 50+\n\nEvening\nBanila Co - Clean It Zero Cleansing Balm\nThe Ordinary - Retinal 0.2% Emulsion\nCeraVe - Moisturising Cream">${esc(s.text || "")}</textarea>
         ${state.template?.products?.length ? `<p class="muted" style="margin:8px 0 0;font-size:13.5px">This replaces your current shelf and weekly routine. Your ticks, ratings and notes stay.</p>` : ""}
         <button class="btn primary" data-act="import-text" style="justify-self:start;margin-top:10px">Import routine</button></div>
       <div class="sec plain"><h3>Or import a spreadsheet</h3>
