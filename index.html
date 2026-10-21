@@ -308,13 +308,23 @@ a.btn { text-decoration: none; color: inherit }
 const STEPS = { 0: "Remove makeup", 1: "Cleanse", 2: "Exfoliate", 3: "Toner & essence", 4: "Serum", 5: "Treatment", 6: "Moisturise", 7: "Seal", 8: "Sun protection" };
 const KINDS = { retinoid: "Retinoid", acid: "Acid", spf: "SPF", vitc: "Vitamin C" };
 const DOW = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-const RATINGS = [[1, "Irritated"], [2, "Dry, tight"], [3, "Okay"], [4, "Good"], [5, "Glowing"]];
-/* Skin is rated separately in the morning and the evening. Older days have one rating for the whole day, which counts for both. */
-const ratingOf = (day, slot) => day?.[slot + "Rating"] || (day?.amRating || day?.pmRating ? null : day?.rating) || null;
-const dayRatings = day => ["am", "pm"].map(s => ratingOf(day, s)).filter(Boolean);
+/* Skin states: pick as many as fit, separately for the morning and the evening. Each has a score for "How your skin responds". */
+const SKIN = [["irritated", "Irritated", 1], ["breakouts", "Breakouts", 1.5], ["dry", "Dry", 2], ["tight", "Tight", 2], ["oily", "Oily", 2.5], ["okay", "Okay", 3],
+  ["good", "Good", 4], ["hydrated", "Hydrated", 4], ["nourished", "Nourished", 4], ["even", "Even", 4.5], ["glowing", "Glowing", 5]];
+const SKIN_BY_ID = Object.fromEntries(SKIN.map(([id, label, score]) => [id, { label, score }]));
+/* Older days stored one 1-5 rating, for the whole day or per routine. */
+const LEGACY_SKIN = { 1: ["irritated"], 2: ["dry", "tight"], 3: ["okay"], 4: ["good"], 5: ["glowing"] };
+function skinOf(day, slot) {
+  if (Array.isArray(day?.[slot + "Skin"])) return day[slot + "Skin"].filter(id => SKIN_BY_ID[id]);
+  const n = day?.[slot + "Rating"] || (day?.amRating || day?.pmRating ? null : day?.rating);
+  return LEGACY_SKIN[n] || [];
+}
+const slotScore = (day, slot) => { const ids = skinOf(day, slot); return ids.length ? ids.reduce((t, id) => t + SKIN_BY_ID[id].score, 0) / ids.length : null };
+const dayRatings = day => ["am", "pm"].map(s => slotScore(day, s)).filter(x => x != null);
+const skinLabels = ids => ids.map(id => SKIN_BY_ID[id].label).join(", ");
 function rateRow(key, slot, day, label) {
-  const cur = ratingOf(day, slot);
-  return `<div class="rate-row"><span class="eyebrow">${label}</span><div class="rating">${RATINGS.map(([n, l]) => `<button data-act="rate" data-key="${key}" data-slot="${slot}" data-n="${n}" aria-pressed="${cur === n}">${l}</button>`).join("")}</div></div>`;
+  const cur = skinOf(day, slot);
+  return `<div class="rate-row"><span class="eyebrow">${label}</span><div class="rating">${SKIN.map(([id, l]) => `<button data-act="skin" data-key="${key}" data-slot="${slot}" data-id="${id}" aria-pressed="${cur.includes(id)}">${l}</button>`).join("")}</div></div>`;
 }
 const SUGGESTIONS = [
   { name: "Moisturising Cream", brand: "CeraVe", short: "CeraVe cream", step: 7, icon: "cream", kinds: [], why: "Richer than your lotion. Use it on winter nights, over the lotion or instead of it." },
@@ -470,7 +480,7 @@ function renderToday() {
     <div class="ritual-head"><h3>${slot === "am" ? "Morning" : "Evening"}</h3>
       <button class="done-btn" data-act="done-all" data-key="${k}" data-slot="${slot}" aria-pressed="${r[slot + "Done"]}">${r[slot + "Done"] ? "✓ All done" : "Tick all"}</button></div>
     ${steps(k, r, slot, true)}
-    ${rateRow(k, slot, r.day, slot === "am" ? "How does your skin feel this morning?" : "How does your skin feel tonight?")}
+    ${rateRow(k, slot, r.day, slot === "am" ? "Skin this morning · pick all that fit" : "Skin tonight · pick all that fit")}
   </div>`;
   return `<section class="glass today" aria-label="Today">
     <div class="today-intro">
@@ -501,7 +511,7 @@ function renderInsights() {
     <div class="ins-col"><span class="eyebrow">With</span>${bar(s.w, "with")}</div>
     <div class="ins-col"><span class="eyebrow">Without</span>${bar(s.wo, "without")}</div></div>` }).join("");
   return `<section class="glass panel"><div style="display:grid;gap:4px"><h2>How your skin <em>responds</em></h2>
-    <p class="muted" style="margin:0;max-width:62ch">Average skin rating, from 1 (irritated) to 5 (glowing), on days you used each product and days you skipped it. Morning and evening ratings are averaged for each day.</p></div>
+    <p class="muted" style="margin:0;max-width:62ch">Average skin score on days you used each product and days you skipped it. Each skin state counts from 1 (irritated) to 5 (glowing), and the morning and evening are averaged for each day.</p></div>
     ${rows ? `<div class="ins">${rows}</div>` : `<p style="margin:0">Nothing to compare yet. Tick the steps you use and rate your skin each day. A product shows up here once you have rated days both with it and without it.</p>`}</section>`;
 }
 function slotList(slot, ids, done, custom, r) {
@@ -522,7 +532,7 @@ function renderWeek() {
     const skips = ["am", "pm"].reduce((n, s) => n + r[s].filter(id => stepState(r, s, id) === "skipped").length, 0);
     const foot = [
       skips ? `<span class="mini">${skips} skipped</span>` : "",
-      ...(() => { const a = ratingOf(day, "am"), p = ratingOf(day, "pm"); return a && a === p ? [`<span class="mini">${esc(RATINGS[a - 1][1])}</span>`] : [a ? `<span class="mini">AM ${esc(RATINGS[a - 1][1])}</span>` : "", p ? `<span class="mini">PM ${esc(RATINGS[p - 1][1])}</span>` : ""] })(),
+      ...(() => { const a = skinLabels(skinOf(day, "am")), p = skinLabels(skinOf(day, "pm")); return a && a === p ? [`<span class="mini">${esc(a)}</span>`] : [a ? `<span class="mini">AM ${esc(a)}</span>` : "", p ? `<span class="mini">PM ${esc(p)}</span>` : ""] })(),
       day.note ? `<span class="mini">Note</span>` : "",
       warn ? `<span class="mini warn">${warn} ${warn > 1 ? "warnings" : "warning"}</span>` : ""
     ].join("");
@@ -662,11 +672,13 @@ document.addEventListener("click", e => {
   else if (act === "done-all") toggleAll(el.dataset.key, el.dataset.slot);
   else if (act === "skip") toggleSkip(el.dataset.key, el.dataset.slot, el.dataset.id);
   else if (act === "reset") { const s = state.sheet, day = { ...(state.days[s.key] || {}) }; delete day[el.dataset.slot]; saveDay(s.key, day) }
-  else if (act === "rate") {
-    const key = el.dataset.key || state.sheet.key, slot = el.dataset.slot, day = { ...(state.days[key] || {}) }, n = +el.dataset.n;
-    if (day.rating && !day.amRating && !day.pmRating) { day.amRating = day.pmRating = day.rating }
-    delete day.rating; day[slot + "Rating"] = day[slot + "Rating"] === n ? null : n; saveDay(key, day);
+  else if (act === "skin") {
+    const key = el.dataset.key || state.sheet.key, slot = el.dataset.slot, id = el.dataset.id, day = { ...(state.days[key] || {}) };
+    const am = skinOf(day, "am"), pm = skinOf(day, "pm"); day.amSkin = am; day.pmSkin = pm; delete day.rating; delete day.amRating; delete day.pmRating;
+    const cur = day[slot + "Skin"]; day[slot + "Skin"] = cur.includes(id) ? cur.filter(x => x !== id) : [...cur, id];
+    saveDay(key, day);
   }
+
   else if (act === "import-open") { state.sheet = { type: "import" }; render(); document.getElementById("imp-text")?.focus() }
   else if (act === "import-text") importText(document.getElementById("imp-text").value);
   else if (act === "backup") saveBackup();
