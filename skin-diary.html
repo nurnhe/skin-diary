@@ -145,6 +145,7 @@ details summary:hover { color: var(--ink) }
 /* Week */
 .weekbar { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 12px }
 .weekbar h2 { margin-right: auto }
+a.btn { text-decoration: none; color: inherit }
 .btn { border: 1px solid var(--line); background: var(--surface-solid); border-radius: 999px; padding: 7px 14px; font-weight: 400; transition: border-color .2s, transform .2s }
 .btn:hover { border-color: var(--accent) }
 .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 500 }
@@ -594,7 +595,8 @@ function renderSheet() {
   let title, sub, body;
   if (s.type === "import") {
     title = "Import my routine"; sub = "Set up";
-    body = `<div class="sec plain"><label for="imp-text"><h3>Paste your products</h3></label>
+    body = `<div class="sec plain" style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px"><span class="muted">Prefer a spreadsheet? Get the Excel template, fill it in, then import it below.</span><a class="btn small" href="https://nurnhe.github.io/skin-diary/routine-template.xlsx" download target="_blank" rel="noopener">Get template</a></div>
+      <div class="sec plain"><label for="imp-text"><h3>Paste your products</h3></label>
         <p class="muted" style="margin:0 0 8px">One product per line, as <b>Brand - Product name</b>. Put them under <b>Morning</b> and <b>Evening</b> headings. Products with no heading go into both, except sunscreen (mornings) and retinol or acids (evenings). Each step is guessed from the name, and you can change it on your shelf.</p>
         <textarea class="input" id="imp-text" rows="11" style="resize:vertical" placeholder="Morning\nCOSRX - Low pH Good Morning Gel Cleanser\nCeraVe - Moisturising Lotion\nLa Roche-Posay - Anthelios UVMune 400 SPF 50+\n\nEvening\nBanila Co - Clean It Zero Cleansing Balm\nThe Ordinary - Retinal 0.2% Emulsion\nCeraVe - Moisturising Cream">${esc(s.text || "")}</textarea>
         ${state.template?.products?.length ? `<p class="muted" style="margin:8px 0 0;font-size:13.5px">This replaces your current shelf and weekly routine. Your ticks, ratings and notes stay.</p>` : ""}
@@ -602,7 +604,7 @@ function renderSheet() {
       <div class="sec plain"><h3>Or import a spreadsheet</h3>
         <p class="muted" style="margin:0 0 8px">Excel (.xlsx) or CSV, with columns <b>Brand</b>, <b>Product</b> and <b>When</b> (Morning, Evening or Both). Optional: <b>Step</b> (like Serum or Sunscreen) and <b>Days</b> (like Mon, Fri, for products you don't use every day). A Skin Diary routine file (.json) works here too.</p>
         <div style="display:flex;flex-wrap:wrap;gap:8px"><label class="btn" style="cursor:pointer">Choose file<input type="file" accept=".xlsx,.xls,.csv,.ods,.json,application/json,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" data-act="import-file" hidden></label>
-          <a class="btn" href="https://nurnhe.github.io/skin-diary/routine-template.xlsx" download target="_blank" rel="noopener">Download template</a></div></div>`;
+          <a class="btn" href="https://nurnhe.github.io/skin-diary/routine-template.xlsx" download target="_blank" rel="noopener">Get template</a></div></div>`;
   } else if (s.type === "day") {
     const d = fromKey(s.key), r = routineFor(s.key), day = r.day;
     title = d.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
