@@ -391,21 +391,20 @@ function toast(msg) { const t = document.getElementById("toast"); t.textContent 
 /* ---------- storage ---------- */
 const LKEY = "skin-diary-v1";
 /* Starting routine for a browser with no saved diary yet (used only outside claude.ai). */
-const STARTER = {"products": [{"brand": "Beauty of Joseon", "id": "p_bojbalm", "kinds": [], "name": "Radiance Cleansing Balm", "step": 0}, {"brand": "", "icon": "drop", "id": "p_rinse", "kinds": [], "name": "Water rinse", "step": 1}, {"brand": "Anua", "id": "p_anua", "kinds": [], "name": "Peach Niacin Spread Cleansing Foam", "step": 1}, {"brand": "Mary & May", "id": "p_marymay", "kinds": ["acid"], "name": "Vegan CICA Tea Tree AHA PHA Blemish Toner", "step": 2}, {"brand": "Beauty of Joseon", "id": "p_ginseng", "kinds": [], "name": "Ginseng Essence Water", "step": 3}, {"brand": "Fenty Skin", "id": "p_fatwater", "kinds": [], "name": "Fat Water Hydrating Milky Toner Essence", "step": 3}, {"brand": "Round Lab", "id": "p_niacin", "kinds": [], "name": "Vita Niacinamide Dark Spot Serum", "step": 4}, {"brand": "celimax", "id": "p_retinol", "kinds": ["retinoid"], "name": "The Vita-A Retinol Shot Tightening Serum", "step": 5}, {"brand": "CeraVe", "id": "p_cerave", "kinds": [], "name": "Moisturising Lotion", "step": 6}, {"brand": "Beauty of Joseon", "id": "p_bojsun", "kinds": ["spf"], "name": "Relief Sun Aqua-fresh Rice + B5 SPF 50+ PA++++", "step": 8}], "week": {"0": {"am": ["p_rinse", "p_ginseng", "p_niacin", "p_cerave", "p_bojsun"], "label": "Recovery", "pm": ["p_bojbalm", "p_anua", "p_fatwater", "p_niacin", "p_cerave"]}, "1": {"am": ["p_rinse", "p_ginseng", "p_niacin", "p_cerave", "p_bojsun"], "label": "Retinol night", "pm": ["p_bojbalm", "p_anua", "p_fatwater", "p_retinol", "p_cerave"]}, "2": {"am": ["p_rinse", "p_ginseng", "p_niacin", "p_cerave", "p_bojsun"], "label": "Recovery", "pm": ["p_bojbalm", "p_anua", "p_fatwater", "p_niacin", "p_cerave"]}, "3": {"am": ["p_rinse", "p_ginseng", "p_niacin", "p_cerave", "p_bojsun"], "label": "Exfoliate", "pm": ["p_bojbalm", "p_anua", "p_marymay", "p_fatwater", "p_cerave"]}, "4": {"am": ["p_rinse", "p_ginseng", "p_niacin", "p_cerave", "p_bojsun"], "label": "Recovery", "pm": ["p_bojbalm", "p_anua", "p_fatwater", "p_niacin", "p_cerave"]}, "5": {"am": ["p_rinse", "p_ginseng", "p_niacin", "p_cerave", "p_bojsun"], "label": "Retinol night", "pm": ["p_bojbalm", "p_anua", "p_fatwater", "p_retinol", "p_cerave"]}, "6": {"am": ["p_rinse", "p_ginseng", "p_niacin", "p_cerave", "p_bojsun"], "label": "Recovery", "pm": ["p_bojbalm", "p_anua", "p_fatwater", "p_niacin", "p_cerave"]}}};
 function loadLocal() {
   let data = {};
   try { data = JSON.parse(localStorage.getItem(LKEY) || "{}") } catch (e) {}
-  state.template = data.template || structuredClone(STARTER); state.days = data.days || {}; state.tplLoaded = true; state.mode = "local";
+  state.template = data.template || null; state.days = data.days || {}; state.tplLoaded = true; state.mode = "local";
   addMakeupRemover();
   setStatus("Your diary is saved in this browser on this device.");
   render();
 }
-/* One-off: diaries saved before the makeup remover step get the balm added to every evening. */
+/* One-off: KK's diary saved before the makeup remover step gets the balm added to every evening. */
 function addMakeupRemover() {
   const MKEY = "skin-diary-balm-added", tpl = state.template;
   try { if (localStorage.getItem(MKEY)) return; localStorage.setItem(MKEY, "1") } catch (e) { return }
-  if (tpl.products.some(p => p.id === "p_bojbalm")) return;
-  tpl.products.push(structuredClone(STARTER.products.find(p => p.id === "p_bojbalm")));
+  if (!tpl?.products.some(p => p.id === "p_anua") || tpl.products.some(p => p.id === "p_bojbalm")) return;
+  tpl.products.push({ brand: "Beauty of Joseon", id: "p_bojbalm", kinds: [], name: "Radiance Cleansing Balm", step: 0 });
   for (const d of Object.values(tpl.week)) d.pm = sortIds(["p_bojbalm", ...d.pm]);
   persistLocal();
 }
@@ -444,7 +443,8 @@ function render() {
   renderSheet();
 }
 function emptyState() {
-  return `<div class="glass empty-state"><h2>No routine yet</h2><p class="muted">Add the products you own, then set a morning and evening routine for each weekday. Every day in the calendar fills in from that template.</p><button class="btn primary" data-act="tab" data-tab="products">Add products</button></div>`;
+  return `<div class="glass empty-state"><h2>Welcome to your <em>skin diary</em></h2><p class="muted">Start by bringing in your own routine. Paste your products as a list, or add them one at a time on your shelf. Every day in the calendar fills in from your routine.</p>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center"><button class="btn primary" data-act="import-open">Import my routine</button><button class="btn" data-act="tab" data-tab="products">Add products one by one</button></div></div>`;
 }
 function renderToday() {
   const k = todayKey(), d = fromKey(k), r = routineFor(k);
@@ -570,6 +570,9 @@ function renderProducts() {
       <button class="btn primary" type="submit" style="justify-self:start">Add to shelf</button>
     </form>
     <section class="glass panel"><h2>Picked <em>for you</em></h2><p class="muted" style="margin:0">For dry to normal skin that gets drier in winter, aiming for glowy, even skin.</p><div class="suggest">${sugg}</div></section>
+    <section class="glass panel"><h2>Import <em>my routine</em></h2>
+      <p class="muted" style="margin:0;max-width:62ch">Paste your products as a list, or load a routine file someone shared with you. This replaces your shelf and weekly routine. Your ticks, ratings and notes stay.</p>
+      <button class="btn primary" data-act="import-open" style="justify-self:start">Import my routine</button></section>
     ${state.mode === "local" ? `<section class="glass panel"><h2>Backup</h2>
       <p class="muted" style="margin:0;max-width:62ch">Your diary is saved on this device only. Save a backup file now and then, and use it to move your diary to another phone or browser.</p>
       <div style="display:flex;flex-wrap:wrap;gap:8px"><button class="btn primary" data-act="backup">Save backup file</button>
@@ -589,7 +592,17 @@ function renderSheet() {
   if (root.contains(a) && (a.tagName === "TEXTAREA" || a.tagName === "INPUT" && a.type === "text")) return;
   const scroll = root.querySelector(".sheet-body")?.scrollTop || 0;
   let title, sub, body;
-  if (s.type === "day") {
+  if (s.type === "import") {
+    title = "Import my routine"; sub = "Set up";
+    body = `<div class="sec plain"><label for="imp-text"><h3>Paste your products</h3></label>
+        <p class="muted" style="margin:0 0 8px">One product per line, as <b>Brand - Product name</b>. Put them under <b>Morning</b> and <b>Evening</b> headings. Products with no heading go into both, except sunscreen (mornings) and retinol or acids (evenings). Each step is guessed from the name, and you can change it on your shelf.</p>
+        <textarea class="input" id="imp-text" rows="11" style="resize:vertical" placeholder="Morning\nCOSRX - Low pH Good Morning Gel Cleanser\nCeraVe - Moisturising Lotion\nLa Roche-Posay - Anthelios UVMune 400 SPF 50+\n\nEvening\nBanila Co - Clean It Zero Cleansing Balm\nThe Ordinary - Retinal 0.2% Emulsion\nCeraVe - Moisturising Cream">${esc(s.text || "")}</textarea>
+        ${state.template?.products?.length ? `<p class="muted" style="margin:8px 0 0;font-size:13.5px">This replaces your current shelf and weekly routine. Your ticks, ratings and notes stay.</p>` : ""}
+        <button class="btn primary" data-act="import-text" style="justify-self:start;margin-top:10px">Import routine</button></div>
+      <div class="sec plain"><h3>Or load a routine file</h3>
+        <p class="muted" style="margin:0 0 8px">A Skin Diary backup or routine file. Only the products and weekly routine are used.</p>
+        <label class="btn" style="cursor:pointer;justify-self:start">Choose file<input type="file" accept="application/json,.json" data-act="import-file" hidden></label></div>`;
+  } else if (s.type === "day") {
     const d = fromKey(s.key), r = routineFor(s.key), day = r.day;
     title = d.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
     sub = r.label ? esc(r.label) : "From your weekly template";
@@ -630,6 +643,8 @@ document.addEventListener("click", e => {
   else if (act === "skip") toggleSkip(el.dataset.key, el.dataset.slot, el.dataset.id);
   else if (act === "reset") { const s = state.sheet, day = { ...(state.days[s.key] || {}) }; delete day[el.dataset.slot]; saveDay(s.key, day) }
   else if (act === "rate") { const key = el.dataset.key || state.sheet.key, day = { ...(state.days[key] || {}) }, n = +el.dataset.n; day.rating = day.rating === n ? null : n; saveDay(key, day) }
+  else if (act === "import-open") { state.sheet = { type: "import" }; render(); document.getElementById("imp-text")?.focus() }
+  else if (act === "import-text") importText(document.getElementById("imp-text").value);
   else if (act === "backup") saveBackup();
   else if (act === "edit") { state.editProd = el.dataset.id; state.iconPick = null; render(); document.getElementById("e-name")?.focus() }
   else if (act === "edit-cancel") { state.editProd = null; render() }
@@ -649,6 +664,7 @@ document.addEventListener("change", e => {
   const el = e.target, act = el.dataset.act;
   if (act === "use") toggleUse(el.dataset.key, el.dataset.slot, el.dataset.id);
   else if (act === "restore" && el.files?.[0]) restoreBackup(el.files[0]);
+  else if (act === "import-file" && el.files?.[0]) importFile(el.files[0]);
   else if (act === "pick") {
     const s = state.sheet, slot = el.dataset.slot, id = el.dataset.id;
     if (s.type === "day") {
@@ -672,6 +688,7 @@ function flushNote() {
   if (l && s?.type === "tpl") { clearTimeout(labelTimer); const tpl = structuredClone(state.template); tpl.week = tpl.week || {}; const t = tpl.week[s.dow] || { am: [], pm: [], label: "" }; if ((t.label || "") !== l.value.trim()) { t.label = l.value.trim(); tpl.week[s.dow] = t; saveTemplate(tpl) } }
 }
 document.addEventListener("input", e => {
+  if (e.target.id === "imp-text" && state.sheet?.type === "import") state.sheet.text = e.target.value;
   if (e.target.id === "note") { clearTimeout(noteTimer); noteTimer = setTimeout(flushNote, 700) }
   if (e.target.id === "tpl-label") { clearTimeout(labelTimer); labelTimer = setTimeout(flushNote, 700) }
 });
@@ -700,6 +717,54 @@ async function restoreBackup(file) {
     if (data?.app !== "skin-diary" || !data.template?.products) throw new Error("not a backup");
     state.template = data.template; state.days = data.days || {}; persistLocal(); render(); toast("Diary restored.");
   } catch (e) { toast("That file isn't a Skin Diary backup.") }
+}
+/* Import: a pasted list (Morning / Evening headings, "Brand - Name" per line) or a Skin Diary file. */
+const GUESS = [[0, /balm|cleansing oil|make-?up remov|micellar/], [8, /\bspf\b|sunscreen|sun ?cream|sun ?stick|\bsun\b|\buv/], [5, /retin|tretinoin|adapalene/], [1, /cleans|foam|face ?wash|wash\b/],
+  [2, /\b[abp]ha\b|exfoliat|peel|glycolic|salicylic|lactic|mandelic/], [3, /toner|essence|mist|skin ?water/], [4, /serum|ampoule|ampule|booster|vitamin c|vita c|niacinamide/],
+  [6, /cream|lotion|moistur|gel|emulsion/], [7, /oil|sleeping|mask|ointment/]];
+function guessProduct(text) {
+  const t = text.toLowerCase(), kinds = [];
+  if (/retin|tretinoin|adapalene/.test(t)) kinds.push("retinoid");
+  if (/\b[abp]ha\b|glycolic|salicylic|lactic|mandelic|exfoliat|peel/.test(t)) kinds.push("acid");
+  if (/\bspf\b|sunscreen|sun ?cream|sun ?stick/.test(t)) kinds.push("spf");
+  if (/vitamin c|vita c|ascorbic/.test(t)) kinds.push("vitc");
+  return { step: (GUESS.find(([, re]) => re.test(t)) || [4])[0], kinds };
+}
+function parseRoutine(text) {
+  const items = new Map(); let section = "both";
+  for (let line of text.split(/\r?\n/)) {
+    line = line.replace(/^\s*([-*•·]|\d+[.)])\s+/, "").trim();
+    if (!line) continue;
+    const head = line.match(/^(morning|am|a\.m\.|day|evening|night|pm|p\.m\.|both|every ?day)\b\s*(?:routine)?\s*(?::\s*(.*))?$/i);
+    if (head) { section = /^(morning|am|a\.m\.|day)/i.test(head[1]) ? "am" : /^(evening|night|pm|p\.m\.)/i.test(head[1]) ? "pm" : "both"; line = (head[2] || "").trim(); if (!line) continue }
+    const parts = line.split(/\s+[-–—]\s+/), brand = parts.length > 1 ? parts.shift().trim() : "", name = parts.join(" - ").trim();
+    const key = (brand + "|" + name).toLowerCase();
+    if (!items.has(key)) items.set(key, { brand, name, ...guessProduct(line), am: false, pm: false });
+    const it = items.get(key);
+    if (section === "both") { it.am ||= !it.kinds.some(k => k === "retinoid" || k === "acid"); it.pm ||= !it.kinds.includes("spf") }
+    else it[section] = true;
+  }
+  const stamp = Date.now().toString(36), list = [...items.values()];
+  const prods = list.map((it, i) => ({ id: `p_${stamp}_${i}`, name: it.name, brand: it.brand, step: it.step, kinds: it.kinds }));
+  const ids = slot => prods.filter((p, i) => list[i][slot]).sort((a, b) => a.step - b.step).map(p => p.id);
+  const week = {}; for (let d = 0; d < 7; d++) week[d] = { label: "", am: ids("am"), pm: ids("pm") };
+  return { products: prods, week };
+}
+function finishImport(tpl) {
+  state.sheet = null; state.tab = isMobile() ? "today" : "week"; saveTemplate(tpl);
+  toast(`Imported ${tpl.products.length} product${tpl.products.length === 1 ? "" : "s"}. Check the steps on your shelf, and tap a weekday under Routine to change a day.`);
+}
+function importText(text) {
+  const tpl = parseRoutine(text || "");
+  if (!tpl.products.length) { toast("Paste at least one product first."); return }
+  finishImport(tpl);
+}
+async function importFile(file) {
+  try {
+    const data = JSON.parse(await file.text()), tpl = data?.template;
+    if (!Array.isArray(tpl?.products) || typeof tpl.week !== "object") throw new Error("no routine");
+    finishImport({ products: tpl.products, week: tpl.week });
+  } catch (e) { toast("That file doesn't have a Skin Diary routine in it.") }
 }
 function addProduct(p) {
   const tpl = structuredClone(state.template || { products: [], week: {} });
