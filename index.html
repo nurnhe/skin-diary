@@ -269,6 +269,8 @@ a.btn { text-decoration: none; color: inherit }
 .pick .sub { grid-column: 3; font-size: 12px; color: var(--muted) }
 .warning { background: var(--warn-soft); color: var(--warn); border-radius: 14px; padding: 8px 12px; font-size: 13px; font-weight: 500 }
 .rating { display: flex; flex-wrap: wrap; gap: 6px }
+.rate-row { display: grid; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid color-mix(in srgb, var(--line) 70%, transparent) }
+.rate-row .rating button { padding: 4px 11px; font-size: 13px }
 .rating button { border: 1px solid var(--line); background: var(--surface-solid); border-radius: 999px; padding: 6px 13px; font-size: 13.5px }
 .rating button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink) }
 .status { font-size: 12px; color: var(--muted); margin: 0 }
@@ -307,6 +309,13 @@ const STEPS = { 0: "Remove makeup", 1: "Cleanse", 2: "Exfoliate", 3: "Toner & es
 const KINDS = { retinoid: "Retinoid", acid: "Acid", spf: "SPF", vitc: "Vitamin C" };
 const DOW = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const RATINGS = [[1, "Irritated"], [2, "Dry, tight"], [3, "Okay"], [4, "Good"], [5, "Glowing"]];
+/* Skin is rated separately in the morning and the evening. Older days have one rating for the whole day, which counts for both. */
+const ratingOf = (day, slot) => day?.[slot + "Rating"] || (day?.amRating || day?.pmRating ? null : day?.rating) || null;
+const dayRatings = day => ["am", "pm"].map(s => ratingOf(day, s)).filter(Boolean);
+function rateRow(key, slot, day, label) {
+  const cur = ratingOf(day, slot);
+  return `<div class="rate-row"><span class="eyebrow">${label}</span><div class="rating">${RATINGS.map(([n, l]) => `<button data-act="rate" data-key="${key}" data-slot="${slot}" data-n="${n}" aria-pressed="${cur === n}">${l}</button>`).join("")}</div></div>`;
+}
 const SUGGESTIONS = [
   { name: "Moisturising Cream", brand: "CeraVe", short: "CeraVe cream", step: 7, icon: "cream", kinds: [], why: "Richer than your lotion. Use it on winter nights, over the lotion or instead of it." },
   { name: "Ceramide Ato Concentrate Cream", brand: "Illiyoon", short: "Illiyoon cream", step: 7, icon: "cream", kinds: [], why: "Another rich ceramide cream for dry spells." },
@@ -387,11 +396,12 @@ function toggleAll(key, slot) {
 function insights() {
   const stats = {};
   for (const key in state.days) {
-    const day = state.days[key]; if (!day.rating) continue;
+    const rs = dayRatings(state.days[key]); if (!rs.length) continue;
+    const rating = rs.reduce((a, b) => a + b, 0) / rs.length;
     const r = routineFor(key), used = new Set(), skipped = new Set();
     for (const s of ["am", "pm"]) r[s].forEach(id => { const st = stepState(r, s, id); if (st) (st === "used" ? used : skipped).add(id) });
-    used.forEach(id => (stats[id] ??= { w: [], wo: [] }).w.push(day.rating));
-    skipped.forEach(id => { if (!used.has(id)) (stats[id] ??= { w: [], wo: [] }).wo.push(day.rating) });
+    used.forEach(id => (stats[id] ??= { w: [], wo: [] }).w.push(rating));
+    skipped.forEach(id => { if (!used.has(id)) (stats[id] ??= { w: [], wo: [] }).wo.push(rating) });
   }
   return stats;
 }
@@ -460,6 +470,7 @@ function renderToday() {
     <div class="ritual-head"><h3>${slot === "am" ? "Morning" : "Evening"}</h3>
       <button class="done-btn" data-act="done-all" data-key="${k}" data-slot="${slot}" aria-pressed="${r[slot + "Done"]}">${r[slot + "Done"] ? "✓ All done" : "Tick all"}</button></div>
     ${steps(k, r, slot, true)}
+    ${rateRow(k, slot, r.day, slot === "am" ? "How does your skin feel this morning?" : "How does your skin feel tonight?")}
   </div>`;
   return `<section class="glass today" aria-label="Today">
     <div class="today-intro">
@@ -467,8 +478,7 @@ function renderToday() {
         <div class="date">${DOW[d.getDay()]}<br><em>${d.toLocaleDateString(undefined, { day: "numeric", month: "long" })}</em></div>
         ${r.complete ? `<span class="complete-badge">✓ Day completed</span>` : ""}</div>
       ${r.label ? `<span class="tag" style="margin:0;justify-self:start">${esc(r.label)}</span>` : ""}
-      <div style="display:grid;gap:8px"><span class="eyebrow">How does your skin feel?</span>
-        <div class="rating">${RATINGS.map(([n, l]) => `<button data-act="rate" data-key="${k}" data-n="${n}" aria-pressed="${r.day.rating === n}">${l}</button>`).join("")}</div>
+      <div style="display:grid;gap:8px">
         ${r.day.note ? `<p class="today-note">“${esc(r.day.note)}”</p>` : ""}
         <button class="btn small" data-act="open-day" data-key="${k}" style="justify-self:start">${r.day.note ? "Edit note" : "Add a note"}</button></div>
     </div>
@@ -491,7 +501,7 @@ function renderInsights() {
     <div class="ins-col"><span class="eyebrow">With</span>${bar(s.w, "with")}</div>
     <div class="ins-col"><span class="eyebrow">Without</span>${bar(s.wo, "without")}</div></div>` }).join("");
   return `<section class="glass panel"><div style="display:grid;gap:4px"><h2>How your skin <em>responds</em></h2>
-    <p class="muted" style="margin:0;max-width:62ch">Average skin rating, from 1 (irritated) to 5 (glowing), on days you used each product and days you skipped it.</p></div>
+    <p class="muted" style="margin:0;max-width:62ch">Average skin rating, from 1 (irritated) to 5 (glowing), on days you used each product and days you skipped it. Morning and evening ratings are averaged for each day.</p></div>
     ${rows ? `<div class="ins">${rows}</div>` : `<p style="margin:0">Nothing to compare yet. Tick the steps you use and rate your skin each day. A product shows up here once you have rated days both with it and without it.</p>`}</section>`;
 }
 function slotList(slot, ids, done, custom, r) {
@@ -512,7 +522,7 @@ function renderWeek() {
     const skips = ["am", "pm"].reduce((n, s) => n + r[s].filter(id => stepState(r, s, id) === "skipped").length, 0);
     const foot = [
       skips ? `<span class="mini">${skips} skipped</span>` : "",
-      day.rating ? `<span class="mini">${esc(RATINGS[day.rating - 1][1])}</span>` : "",
+      ...(() => { const a = ratingOf(day, "am"), p = ratingOf(day, "pm"); return a && a === p ? [`<span class="mini">${esc(RATINGS[a - 1][1])}</span>`] : [a ? `<span class="mini">AM ${esc(RATINGS[a - 1][1])}</span>` : "", p ? `<span class="mini">PM ${esc(RATINGS[p - 1][1])}</span>` : ""] })(),
       day.note ? `<span class="mini">Note</span>` : "",
       warn ? `<span class="mini warn">${warn} ${warn > 1 ? "warnings" : "warning"}</span>` : ""
     ].join("");
@@ -621,10 +631,10 @@ function renderSheet() {
         <button class="done-btn" data-act="done-all" data-key="${s.key}" data-slot="${slot}" aria-pressed="${r[slot + "Done"]}">${r[slot + "Done"] ? "✓ All done" : "Tick all"}</button></div>
       ${warnings(slot, r[slot]).map(w => `<div class="warning">${esc(w)}</div>`).join("")}
       ${steps(s.key, r, slot, true)}
+      ${rateRow(s.key, slot, day, slot === "am" ? "Skin in the morning" : "Skin in the evening")}
       <details id="plan-${slot}"${state.openPlan?.[slot] ? " open" : ""}><summary>Change products for this day</summary>
         <div style="display:grid;gap:8px;padding-top:8px">${r["custom" + (slot === "am" ? "Am" : "Pm")] ? `<button class="btn small" data-act="reset" data-slot="${slot}" style="justify-self:start">Back to template</button>` : ""}${picker(slot, r[slot])}</div></details></div>`;
     body = sec("am") + sec("pm") + `
-      <div class="sec plain"><h3>How did your skin feel?</h3><div class="rating">${RATINGS.map(([n, l]) => `<button data-act="rate" data-n="${n}" aria-pressed="${day.rating === n}">${l}</button>`).join("")}</div></div>
       <div class="sec plain"><label for="note"><h3>Notes</h3></label>
         <textarea class="input" id="note" rows="4" placeholder="Breakouts, dry patches, a new product you tried…" style="resize:vertical">${esc(day.note || "")}</textarea></div>`;
   } else {
@@ -652,7 +662,11 @@ document.addEventListener("click", e => {
   else if (act === "done-all") toggleAll(el.dataset.key, el.dataset.slot);
   else if (act === "skip") toggleSkip(el.dataset.key, el.dataset.slot, el.dataset.id);
   else if (act === "reset") { const s = state.sheet, day = { ...(state.days[s.key] || {}) }; delete day[el.dataset.slot]; saveDay(s.key, day) }
-  else if (act === "rate") { const key = el.dataset.key || state.sheet.key, day = { ...(state.days[key] || {}) }, n = +el.dataset.n; day.rating = day.rating === n ? null : n; saveDay(key, day) }
+  else if (act === "rate") {
+    const key = el.dataset.key || state.sheet.key, slot = el.dataset.slot, day = { ...(state.days[key] || {}) }, n = +el.dataset.n;
+    if (day.rating && !day.amRating && !day.pmRating) { day.amRating = day.pmRating = day.rating }
+    delete day.rating; day[slot + "Rating"] = day[slot + "Rating"] === n ? null : n; saveDay(key, day);
+  }
   else if (act === "import-open") { state.sheet = { type: "import" }; render(); document.getElementById("imp-text")?.focus() }
   else if (act === "import-text") importText(document.getElementById("imp-text").value);
   else if (act === "backup") saveBackup();
