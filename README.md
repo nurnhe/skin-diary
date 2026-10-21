@@ -2,10 +2,17 @@
 
 A weekly skincare calendar: plan morning and evening products for each day, tick off or skip each step, rate how your skin feels, keep notes, and see how your skin responds with and without each product.
 
-Open `index.html` in a browser. It's a single file with no build step.
+**Use it as a phone app:** open the GitHub Pages address in Chrome on Android, then tap ⋮ → **Install app** (or **Add to Home screen**). It opens full screen with its own icon and works offline.
+
+## Files
+
+- `skin-diary.html` is the page itself. The same file is published as a Claude artifact.
+- `build.py` wraps it into `index.html` with the app manifest and offline support. Run `python3 build.py` after editing `skin-diary.html`.
+- `manifest.webmanifest`, `sw.js` and `icons/` make it installable and work offline.
 
 ## Features
 
+- **Phone layout:** a bottom tab bar with Today, Week, Routine and Shelf.
 - **Today:** numbered morning and evening steps with a checkbox and a Skip button for each step. A day is marked completed once every step is ticked or skipped.
 - **Week view:** seven day cards that fill in from a repeating weekly template. Any single day can be edited.
 - **Weekly template:** a default routine for each weekday, for example retinol nights, an exfoliation night and recovery nights.
@@ -14,7 +21,7 @@ Open `index.html` in a browser. It's a single file with no build step.
 
 ## Data
 
-When the page runs as a Claude artifact, data is saved in the artifact's database and syncs across devices. Opened anywhere else, it saves to the browser's `localStorage`. That data stays on one device only, and the page starts empty.
+When the page runs as a Claude artifact, data is saved in the artifact's database and syncs across devices. Anywhere else, including the installed app, it saves to the browser's `localStorage` on that device. It starts with a sample routine, and **Shelf → Backup** saves or restores a backup file, for example to move to a new phone.
 
 ## Credits
 
