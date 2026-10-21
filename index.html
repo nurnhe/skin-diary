@@ -363,11 +363,13 @@ function toast(msg) { const t = document.getElementById("toast"); t.textContent 
 
 /* ---------- storage ---------- */
 const LKEY = "skin-diary-v1";
+/* Starting routine for a browser with no saved diary yet (used only outside claude.ai). */
+const STARTER = {"products": [{"brand": "", "icon": "drop", "id": "p_rinse", "kinds": [], "name": "Water rinse", "step": 1}, {"brand": "Anua", "id": "p_anua", "kinds": [], "name": "Peach Niacin Spread Cleansing Foam", "step": 1}, {"brand": "Mary & May", "id": "p_marymay", "kinds": ["acid"], "name": "Vegan CICA Tea Tree AHA PHA Blemish Toner", "step": 2}, {"brand": "Beauty of Joseon", "id": "p_ginseng", "kinds": [], "name": "Ginseng Essence Water", "step": 3}, {"brand": "Fenty Skin", "id": "p_fatwater", "kinds": [], "name": "Fat Water Hydrating Milky Toner Essence", "step": 3}, {"brand": "Round Lab", "id": "p_niacin", "kinds": [], "name": "Vita Niacinamide Dark Spot Serum", "step": 4}, {"brand": "celimax", "id": "p_retinol", "kinds": ["retinoid"], "name": "The Vita-A Retinol Shot Tightening Serum", "step": 5}, {"brand": "CeraVe", "id": "p_cerave", "kinds": [], "name": "Moisturising Lotion", "step": 6}, {"brand": "Beauty of Joseon", "id": "p_bojsun", "kinds": ["spf"], "name": "Relief Sun Aqua-fresh Rice + B5 SPF 50+ PA++++", "step": 8}], "week": {"0": {"am": ["p_rinse", "p_ginseng", "p_niacin", "p_cerave", "p_bojsun"], "label": "Recovery", "pm": ["p_anua", "p_fatwater", "p_niacin", "p_cerave"]}, "1": {"am": ["p_rinse", "p_ginseng", "p_niacin", "p_cerave", "p_bojsun"], "label": "Retinol night", "pm": ["p_anua", "p_fatwater", "p_retinol", "p_cerave"]}, "2": {"am": ["p_rinse", "p_ginseng", "p_niacin", "p_cerave", "p_bojsun"], "label": "Recovery", "pm": ["p_anua", "p_fatwater", "p_niacin", "p_cerave"]}, "3": {"am": ["p_rinse", "p_ginseng", "p_niacin", "p_cerave", "p_bojsun"], "label": "Exfoliate", "pm": ["p_anua", "p_marymay", "p_fatwater", "p_cerave"]}, "4": {"am": ["p_rinse", "p_ginseng", "p_niacin", "p_cerave", "p_bojsun"], "label": "Recovery", "pm": ["p_anua", "p_fatwater", "p_niacin", "p_cerave"]}, "5": {"am": ["p_rinse", "p_ginseng", "p_niacin", "p_cerave", "p_bojsun"], "label": "Retinol night", "pm": ["p_anua", "p_fatwater", "p_retinol", "p_cerave"]}, "6": {"am": ["p_rinse", "p_ginseng", "p_niacin", "p_cerave", "p_bojsun"], "label": "Recovery", "pm": ["p_anua", "p_fatwater", "p_niacin", "p_cerave"]}}};
 function loadLocal() {
   let data = {};
   try { data = JSON.parse(localStorage.getItem(LKEY) || "{}") } catch (e) {}
-  state.template = data.template || null; state.days = data.days || {}; state.tplLoaded = true; state.mode = "local";
-  setStatus("Saving in this browser only. Open the page on claude.ai to keep your diary in sync.");
+  state.template = data.template || structuredClone(STARTER); state.days = data.days || {}; state.tplLoaded = true; state.mode = "local";
+  setStatus("Your diary is saved in this browser on this device.");
   render();
 }
 function persistLocal() { try { localStorage.setItem(LKEY, JSON.stringify({ template: state.template, days: state.days })) } catch (e) {} }
