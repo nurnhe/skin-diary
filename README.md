@@ -17,6 +17,7 @@ A weekly skincare calendar: plan morning and evening products for each day, tick
 - **Week view:** seven day cards that fill in from a repeating weekly template. Any single day can be edited.
 - **Weekly template:** a default routine for each weekday, for example retinol nights, an exfoliation night and recovery nights.
 - **Products:** your shelf with exact product names, a step for each product and an icon. You can add, edit and remove products. Warnings flag risky combinations, for example retinol and an acid in the same routine.
+- **Import my routine:** new diaries start empty. Paste a product list, or import an Excel or CSV spreadsheet (`routine-template.xlsx` is a ready-made template) or a Skin Diary routine file.
 - **How your skin responds:** your average skin rating on days with and without each product.
 
 ## Data
@@ -27,6 +28,7 @@ When the page runs as a Claude artifact, data is saved in the artifact's databas
 
 Icons are inlined SVG from:
 
+- [SheetJS](https://sheetjs.com) 0.18.5, loaded from cdnjs only when a spreadsheet is imported (Apache License 2.0)
 - [IconPark](https://github.com/bytedance/IconPark) (Apache License 2.0)
 - [Phosphor Icons](https://github.com/phosphor-icons/core) (MIT License)
 - [Tabler Icons](https://github.com/tabler/tabler-icons) (MIT License)

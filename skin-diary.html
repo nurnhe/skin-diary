@@ -571,7 +571,7 @@ function renderProducts() {
     </form>
     <section class="glass panel"><h2>Picked <em>for you</em></h2><p class="muted" style="margin:0">For dry to normal skin that gets drier in winter, aiming for glowy, even skin.</p><div class="suggest">${sugg}</div></section>
     <section class="glass panel"><h2>Import <em>my routine</em></h2>
-      <p class="muted" style="margin:0;max-width:62ch">Paste your products as a list, or load a routine file someone shared with you. This replaces your shelf and weekly routine. Your ticks, ratings and notes stay.</p>
+      <p class="muted" style="margin:0;max-width:62ch">Paste your products as a list, or import an Excel or CSV spreadsheet. This replaces your shelf and weekly routine. Your ticks, ratings and notes stay.</p>
       <button class="btn primary" data-act="import-open" style="justify-self:start">Import my routine</button></section>
     ${state.mode === "local" ? `<section class="glass panel"><h2>Backup</h2>
       <p class="muted" style="margin:0;max-width:62ch">Your diary is saved on this device only. Save a backup file now and then, and use it to move your diary to another phone or browser.</p>
@@ -599,9 +599,10 @@ function renderSheet() {
         <textarea class="input" id="imp-text" rows="11" style="resize:vertical" placeholder="Morning\nCOSRX - Low pH Good Morning Gel Cleanser\nCeraVe - Moisturising Lotion\nLa Roche-Posay - Anthelios UVMune 400 SPF 50+\n\nEvening\nBanila Co - Clean It Zero Cleansing Balm\nThe Ordinary - Retinal 0.2% Emulsion\nCeraVe - Moisturising Cream">${esc(s.text || "")}</textarea>
         ${state.template?.products?.length ? `<p class="muted" style="margin:8px 0 0;font-size:13.5px">This replaces your current shelf and weekly routine. Your ticks, ratings and notes stay.</p>` : ""}
         <button class="btn primary" data-act="import-text" style="justify-self:start;margin-top:10px">Import routine</button></div>
-      <div class="sec plain"><h3>Or load a routine file</h3>
-        <p class="muted" style="margin:0 0 8px">A Skin Diary backup or routine file. Only the products and weekly routine are used.</p>
-        <label class="btn" style="cursor:pointer;justify-self:start">Choose file<input type="file" accept="application/json,.json" data-act="import-file" hidden></label></div>`;
+      <div class="sec plain"><h3>Or import a spreadsheet</h3>
+        <p class="muted" style="margin:0 0 8px">Excel (.xlsx) or CSV, with columns <b>Brand</b>, <b>Product</b> and <b>When</b> (Morning, Evening or Both). Optional: <b>Step</b> (like Serum or Sunscreen) and <b>Days</b> (like Mon, Fri, for products you don't use every day). A Skin Diary routine file (.json) works here too.</p>
+        <div style="display:flex;flex-wrap:wrap;gap:8px"><label class="btn" style="cursor:pointer">Choose file<input type="file" accept=".xlsx,.xls,.csv,.ods,.json,application/json,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" data-act="import-file" hidden></label>
+          <a class="btn" href="https://nurnhe.github.io/skin-diary/routine-template.xlsx" download target="_blank" rel="noopener">Download template</a></div></div>`;
   } else if (s.type === "day") {
     const d = fromKey(s.key), r = routineFor(s.key), day = r.day;
     title = d.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
@@ -738,16 +739,46 @@ function parseRoutine(text) {
     const head = line.match(/^(morning|am|a\.m\.|day|evening|night|pm|p\.m\.|both|every ?day)\b\s*(?:routine)?\s*(?::\s*(.*))?$/i);
     if (head) { section = /^(morning|am|a\.m\.|day)/i.test(head[1]) ? "am" : /^(evening|night|pm|p\.m\.)/i.test(head[1]) ? "pm" : "both"; line = (head[2] || "").trim(); if (!line) continue }
     const parts = line.split(/\s+[-–—]\s+/), brand = parts.length > 1 ? parts.shift().trim() : "", name = parts.join(" - ").trim();
-    const key = (brand + "|" + name).toLowerCase();
-    if (!items.has(key)) items.set(key, { brand, name, ...guessProduct(line), am: false, pm: false });
-    const it = items.get(key);
-    if (section === "both") { it.am ||= !it.kinds.some(k => k === "retinoid" || k === "acid"); it.pm ||= !it.kinds.includes("spf") }
-    else it[section] = true;
+    addItem(items, { brand, name, ...guessProduct(line) }, section, null);
   }
-  const stamp = Date.now().toString(36), list = [...items.values()];
+  return buildTemplate([...items.values()]);
+}
+/* Spreadsheet rows: a header row with Brand, Product, When (Morning / Evening / Both), and optional Step and Days columns. */
+const DAY_NAMES = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+function parseRows(rows) {
+  rows = rows.map(r => r.map(c => String(c ?? "").trim())).filter(r => r.some(Boolean));
+  const hi = rows.slice(0, 5).findIndex(r => r.some(c => /^(product|product name|name)$/i.test(c)));
+  if (hi < 0) return parseRoutine(rows.map(r => r.filter(Boolean).join(" - ")).join("\n"));
+  const col = re => rows[hi].findIndex(c => re.test(c));
+  const ci = { brand: col(/^brand/i), name: col(/^(product|product name|name)$/i), when: col(/^(when|time|routine|am ?\/ ?pm|morning ?\/ ?evening)/i), step: col(/^(step|type|category)/i), days: col(/^days?$/i) };
+  const items = new Map(), get = (r, k) => ci[k] < 0 ? "" : r[ci[k]] || "";
+  for (const r of rows.slice(hi + 1)) {
+    const name = get(r, "name"); if (!name) continue;
+    const brand = get(r, "brand"), when = get(r, "when").toLowerCase(), stepText = get(r, "step").toLowerCase();
+    const guess = guessProduct(brand + " " + name + " " + stepText);
+    const named = Object.entries(STEPS).find(([, l]) => stepText && (stepText.includes(l.toLowerCase()) || l.toLowerCase().includes(stepText)));
+    const fromStep = stepText && guessProduct(stepText);
+    const step = named ? +named[0] : fromStep && GUESS.some(([, re]) => re.test(stepText)) ? fromStep.step : guess.step;
+    const section = /^(am|a\.m\.|morning|day)/.test(when) ? "am" : /^(pm|p\.m\.|evening|night)/.test(when) ? "pm" : "both";
+    const dayText = get(r, "days").toLowerCase();
+    const days = !dayText || /every|daily|all/.test(dayText) ? null : new Set(DAY_NAMES.map((d, i) => dayText.includes(d) ? i : -1).filter(i => i >= 0));
+    addItem(items, { brand, name, step, kinds: guess.kinds }, section, days && days.size ? days : null);
+  }
+  return buildTemplate([...items.values()]);
+}
+function addItem(items, p, section, days) {
+  const key = (p.brand + "|" + p.name).toLowerCase();
+  if (!items.has(key)) items.set(key, { ...p, am: null, pm: null });
+  const it = items.get(key), all = new Set([0, 1, 2, 3, 4, 5, 6]), d = days || all;
+  const put = slot => { it[slot] = it[slot] || new Set(); d.forEach(x => it[slot].add(x)) };
+  if (section === "both") { if (!it.kinds.some(k => k === "retinoid" || k === "acid")) put("am"); if (!it.kinds.includes("spf")) put("pm") }
+  else put(section);
+}
+function buildTemplate(list) {
+  const stamp = Date.now().toString(36);
   const prods = list.map((it, i) => ({ id: `p_${stamp}_${i}`, name: it.name, brand: it.brand, step: it.step, kinds: it.kinds }));
-  const ids = slot => prods.filter((p, i) => list[i][slot]).sort((a, b) => a.step - b.step).map(p => p.id);
-  const week = {}; for (let d = 0; d < 7; d++) week[d] = { label: "", am: ids("am"), pm: ids("pm") };
+  const ids = (slot, dow) => prods.filter((p, i) => list[i][slot]?.has(dow)).sort((a, b) => a.step - b.step).map(p => p.id);
+  const week = {}; for (let d = 0; d < 7; d++) week[d] = { label: "", am: ids("am", d), pm: ids("pm", d) };
   return { products: prods, week };
 }
 function finishImport(tpl) {
@@ -759,7 +790,22 @@ function importText(text) {
   if (!tpl.products.length) { toast("Paste at least one product first."); return }
   finishImport(tpl);
 }
+const XLSX_URL = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+function loadXlsx() {
+  return window.XLSX ? Promise.resolve(window.XLSX) : new Promise((ok, fail) => {
+    const sc = document.createElement("script"); sc.src = XLSX_URL; sc.onload = () => ok(window.XLSX); sc.onerror = fail; document.head.appendChild(sc);
+  });
+}
 async function importFile(file) {
+  if (!/\.json$/i.test(file.name)) {
+    try {
+      const X = await loadXlsx(), wb = X.read(await file.arrayBuffer()), ws = wb.Sheets[wb.SheetNames[0]];
+      const tpl = parseRows(X.utils.sheet_to_json(ws, { header: 1, defval: "", raw: false }));
+      if (!tpl.products.length) { toast("Couldn't find any products in that spreadsheet."); return }
+      finishImport(tpl);
+    } catch (e) { toast(navigator.onLine === false ? "Connect to the internet to import a spreadsheet." : "Couldn't read that spreadsheet.") }
+    return;
+  }
   try {
     const data = JSON.parse(await file.text()), tpl = data?.template;
     if (!Array.isArray(tpl?.products) || typeof tpl.week !== "object") throw new Error("no routine");
