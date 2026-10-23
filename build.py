@@ -22,7 +22,12 @@ head = """<!doctype html>
 <body>
 """
 tail = """
-<script>if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});</script>
+<script>if ("serviceWorker" in navigator) {
+  // When an update takes over from an older version, reload once so it shows straight away.
+  let hadController = !!navigator.serviceWorker.controller, reloaded = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => { if (hadController && !reloaded) { reloaded = true; location.reload() } hadController = true });
+  navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).catch(() => {});
+}</script>
 </body>
 </html>
 """

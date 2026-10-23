@@ -397,7 +397,7 @@ function insights() {
     const rating = rs.reduce((a, b) => a + b, 0) / rs.length;
     const r = routineFor(key), used = new Set(), skipped = new Set();
     /* Brush teeth isn't skincare, so it stays out of the comparison. */
-    for (const s of ["am", "pm"]) r[s].filter(id => prod(id)?.step !== 9).forEach(id => { const st = stepState(r, s, id); if (st) (st === "used" ? used : skipped).add(id) });
+    for (const s of ["am", "pm"]) r[s].filter(id => +prod(id)?.step !== 9 && !/brush(ing)? (your )?teeth|tooth ?brush/i.test(prod(id)?.name || "")).forEach(id => { const st = stepState(r, s, id); if (st) (st === "used" ? used : skipped).add(id) });
     used.forEach(id => (stats[id] ??= { w: [], wo: [] }).w.push(rating));
     skipped.forEach(id => { if (!used.has(id)) (stats[id] ??= { w: [], wo: [] }).wo.push(rating) });
   }

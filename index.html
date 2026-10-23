@@ -414,7 +414,7 @@ function insights() {
     const rating = rs.reduce((a, b) => a + b, 0) / rs.length;
     const r = routineFor(key), used = new Set(), skipped = new Set();
     /* Brush teeth isn't skincare, so it stays out of the comparison. */
-    for (const s of ["am", "pm"]) r[s].filter(id => prod(id)?.step !== 9).forEach(id => { const st = stepState(r, s, id); if (st) (st === "used" ? used : skipped).add(id) });
+    for (const s of ["am", "pm"]) r[s].filter(id => +prod(id)?.step !== 9 && !/brush(ing)? (your )?teeth|tooth ?brush/i.test(prod(id)?.name || "")).forEach(id => { const st = stepState(r, s, id); if (st) (st === "used" ? used : skipped).add(id) });
     used.forEach(id => (stats[id] ??= { w: [], wo: [] }).w.push(rating));
     skipped.forEach(id => { if (!used.has(id)) (stats[id] ??= { w: [], wo: [] }).wo.push(rating) });
   }
@@ -883,6 +883,11 @@ render();
 })();
 </script>
 
-<script>if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});</script>
+<script>if ("serviceWorker" in navigator) {
+  // When an update takes over from an older version, reload once so it shows straight away.
+  let hadController = !!navigator.serviceWorker.controller, reloaded = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => { if (hadController && !reloaded) { reloaded = true; location.reload() } hadController = true });
+  navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).catch(() => {});
+}</script>
 </body>
 </html>
