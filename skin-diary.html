@@ -179,6 +179,10 @@ a.btn { text-decoration: none; color: inherit }
 .day-foot { display: flex; flex-wrap: wrap; gap: 4px; padding-inline: 4px }
 .mini { font-size: 11.5px; padding: 1px 8px; border-radius: 999px; background: var(--surface-solid); border: 1px solid var(--line); color: var(--muted) }
 .mini.warn { color: var(--warn); border-color: transparent; background: var(--warn-soft) }
+.mini.ok { color: var(--ok); border-color: transparent; background: color-mix(in srgb, var(--ok) 14%, var(--surface-solid)) }
+button.mini { font: inherit; font-size: 11.5px; cursor: pointer }
+.fin-badge { display: inline-block; margin-top: 4px; font-weight: 500; white-space: nowrap }
+.slot li .mini { font-size: 10.5px; padding: 0 6px; white-space: nowrap }
 
 .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12.5px; color: var(--muted) }
 .legend span { display: inline-flex; gap: 6px; align-items: center }
@@ -217,6 +221,11 @@ a.btn { text-decoration: none; color: inherit }
 .chip { display: inline-block; font-size: 11px; font-weight: 500; padding: 1px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); margin-left: 4px; vertical-align: 1px }
 .chip.retinoid, .chip.acid { background: var(--warn-soft); color: var(--warn) }
 .chip.spf { background: var(--am-2); color: var(--am-ink) }
+.prod-row .fin-badge { margin-top: 6px }
+.finish-ask, .swaps { grid-column: 1 / -1; display: grid; gap: 10px; padding-top: 4px }
+.finish-ask .btns { display: flex; flex-wrap: wrap; gap: 6px }
+.swaps .suggest { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)) }
+.swaps .card .btns { display: flex; flex-wrap: wrap; gap: 6px }
 .add-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; align-items: end }
 .field { display: grid; gap: 5px; font-size: 13px; color: var(--muted) }
 .input { border: 1px solid var(--line); background: var(--surface-solid); border-radius: 14px; padding: 9px 12px; color: var(--ink); width: 100% }
@@ -257,7 +266,7 @@ a.btn { text-decoration: none; color: inherit }
 .rating button { border: 1px solid var(--line); background: var(--surface-solid); border-radius: 999px; padding: 6px 13px; font-size: 13.5px }
 .rating button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink) }
 .status { font-size: 12px; color: var(--muted); margin: 0 }
-.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(18px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 999px; font-size: 14px; z-index: 30; box-shadow: var(--shadow-lg); max-width: calc(100% - 32px) }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(18px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--bg); padding: 10px 18px; border-radius: 18px; font-size: 14px; line-height: 1.4; text-align: center; z-index: 30; box-shadow: var(--shadow-lg); width: max-content; max-width: min(420px, calc(100% - 32px)); overflow-wrap: anywhere }
 @media (prefers-reduced-motion: no-preference) {
   .sheet { animation: slide .25s cubic-bezier(.2, .8, .2, 1) } @keyframes slide { from { transform: translateX(40px); opacity: .5 } }
 }
@@ -320,6 +329,46 @@ const SUGGESTIONS = [
   { name: "Green Tangerine Vita C Dark Spot Serum", brand: "Goodal", short: "Vitamin C", step: 4, icon: "citrus", kinds: ["vitc"], why: "Optional alternative vitamin C for evening out tone." }
 ];
 
+/* Alternatives offered when a finished product won't be repurchased, by step. Picked for dry to normal skin aiming for glowy, nourished, even skin. */
+const ALTERNATIVES = {
+  0: [{ brand: "Banila Co", name: "Clean It Zero Cleansing Balm Nourishing", why: "A richer balm with ceramides that melts make-up without leaving skin tight." },
+      { brand: "Heimish", name: "All Clean Balm", why: "Gentle balm that rinses off cleanly, kind to dry patches." },
+      { brand: "Ma:nyo", name: "Pure Cleansing Oil", why: "A light oil that dissolves sunscreen and make-up quickly." }],
+  1: [{ brand: "CeraVe", name: "Hydrating Cream-to-Foam Cleanser", why: "Creamy and non-stripping, with ceramides and hyaluronic acid." },
+      { brand: "La Roche-Posay", name: "Toleriane Hydrating Gentle Cleanser", why: "Very gentle milky cleanser for dry, easily upset skin." },
+      { brand: "COSRX", name: "Low pH Good Morning Gel Cleanser", why: "Mild gel that leaves skin comfortable, good for mornings." }],
+  2: [{ brand: "The Ordinary", name: "Lactic Acid 5% + HA", why: "The gentlest acid for dry skin, smooths and brightens over time.", kinds: ["acid"] },
+      { brand: "Paula's Choice", name: "Skin Perfecting 8% AHA Gel Exfoliant", why: "Evens tone and adds glow once or twice a week.", kinds: ["acid"] },
+      { brand: "COSRX", name: "AHA 7 Whitehead Power Liquid", why: "Light glycolic toner for smoother, brighter skin.", kinds: ["acid"] }],
+  3: [{ brand: "Hada Labo", name: "Gokujyun Premium Hydrating Lotion", why: "Layers of hyaluronic acid for deep, plumping hydration." },
+      { brand: "Isntree", name: "Hyaluronic Acid Toner", why: "Simple hydrating toner that preps skin for serums." },
+      { brand: "Missha", name: "Time Revolution The First Treatment Essence", why: "Fermented essence for glow and a smoother texture." }],
+  4: [{ brand: "Beauty of Joseon", name: "Glow Deep Serum: Rice + Alpha-Arbutin", why: "Fades dark spots for a more even, glowy tone." },
+      { brand: "Torriden", name: "DIVE-IN Low Molecular Hyaluronic Acid Serum", why: "Lightweight hydration that sits well under cream." },
+      { brand: "Good Molecules", name: "Discoloration Correcting Serum", why: "Tranexamic acid and niacinamide for uneven tone." }],
+  5: [{ brand: "The Ordinary", name: "Retinal 0.2% Emulsion", why: "A gentle, effective retinal in a creamy base for dry skin.", kinds: ["retinoid"] },
+      { brand: "La Roche-Posay", name: "Retinol B3 Serum", why: "Retinol with soothing niacinamide, good for beginners.", kinds: ["retinoid"] },
+      { brand: "Paula's Choice", name: "Clinical 1% Retinol Treatment", why: "A stronger option once your skin is used to retinoids.", kinds: ["retinoid"] }],
+  6: [{ brand: "CeraVe", name: "Moisturising Cream", why: "Richer than a lotion, with ceramides for winter dryness." },
+      { brand: "Illiyoon", name: "Ceramide Ato Concentrate Cream", why: "A rich ceramide cream for dry spells." },
+      { brand: "Aestura", name: "Atobarrier 365 Cream", why: "Barrier cream that keeps skin soft and nourished all day." }],
+  7: [{ brand: "La Roche-Posay", name: "Cicaplast Baume B5+", why: "Seals in moisture on dry or irritated patches." },
+      { brand: "Laneige", name: "Water Sleeping Mask", why: "An overnight mask for a dewy, rested look." }],
+  8: [{ brand: "La Roche-Posay", name: "Anthelios UVMune 400 Invisible Fluid SPF 50+", why: "Very high, long-lasting protection with no white cast.", kinds: ["spf"] },
+      { brand: "Skin1004", name: "Madagascar Centella Hyalu-Cica Water-Fit Sun Serum SPF50+", why: "Hydrating serum texture that suits dry skin.", kinds: ["spf"] },
+      { brand: "Isntree", name: "Hyaluronic Acid Watery Sun Gel SPF50+ PA++++", why: "Light, moisturising gel that layers well." }]
+};
+const canFinish = p => p && p.brand && +p.step !== 9;
+function finishBadge(p, link) {
+  const f = p?.finished; if (!f) return "";
+  if (f.verdict === "repurchase") return `<span class="mini ok fin-badge">Finished · repurchase</span>`;
+  return link ? `<button class="mini warn fin-badge" data-act="find-swap" data-id="${p.id}">Replace · see swaps</button>` : `<span class="mini warn fin-badge">Finished · won't repurchase</span>`;
+}
+function alternativesFor(p) {
+  const own = new Map(products().map(x => [(x.brand + "|" + x.name).toLowerCase(), x]));
+  return (ALTERNATIVES[p.step] || []).filter(a => (a.brand + "|" + a.name).toLowerCase() !== (p.brand + "|" + p.name).toLowerCase())
+    .map(a => ({ ...a, step: p.step, kinds: a.kinds || [], owned: own.get((a.brand + "|" + a.name).toLowerCase()) }));
+}
 const state = { tab: window.matchMedia("(max-width: 700px)").matches ? "today" : "week", weekStart: mondayOf(new Date()), template: null, tplLoaded: false, days: {}, mode: "loading", sheet: null, confirmRemove: null };
 let db = null;
 
@@ -412,7 +461,12 @@ function warnings(slot, ids) {
   if (slot === "pm" && ks.has("vitc")) w.push("Vitamin C works best in the morning, under sunscreen.");
   return w;
 }
-function toast(msg) { const t = document.getElementById("toast"); t.textContent = msg; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => t.hidden = true, 3200) }
+function toast(msg) {
+  const t = document.getElementById("toast"), nav = document.querySelector(".bottom-nav");
+  /* On phones the toast sits just above the bottom tab bar instead of covering it. */
+  t.style.bottom = nav && getComputedStyle(nav).display !== "none" ? nav.getBoundingClientRect().height + 12 + "px" : "";
+  t.textContent = msg; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => t.hidden = true, 3000 + msg.length * 20);
+}
 
 /* ---------- storage ---------- */
 const LKEY = "skin-diary-v1";
@@ -497,7 +551,7 @@ function steps(key, r, slot, numbered) {
   if (!r[slot].length) return `<p class="muted" style="margin:0">Nothing planned.</p>`;
   return `<ol class="steps${numbered ? " numbered" : ""}">${r[slot].map(id => { const p = prod(id), st = stepState(r, slot, id); return `<li class="${st}"><label class="step">
     <input type="checkbox" data-act="use" data-key="${key}" data-slot="${slot}" data-id="${id}"${st === "used" ? " checked" : ""}>
-    ${thumb(p, 40)}<span class="txt"><span class="nm">${esc(p.name)}</span><span class="sub">${p.brand ? esc(p.brand) + " · " : ""}${STEPS[p.step]}${st === "skipped" ? " · skipped" : ""}</span></span></label>
+    ${thumb(p, 40)}<span class="txt"><span class="nm">${esc(p.name)}</span><span class="sub">${p.brand ? esc(p.brand) + " · " : ""}${STEPS[p.step]}${st === "skipped" ? " · skipped" : ""}</span>${finishBadge(p, true)}</span></label>
     <button class="skip-btn" data-act="skip" data-key="${key}" data-slot="${slot}" data-id="${id}" aria-pressed="${st === "skipped"}">${st === "skipped" ? "Undo skip" : "Skip"}</button></li>` }).join("")}</ol>`;
 }
 function renderInsights() {
@@ -513,7 +567,7 @@ function renderInsights() {
     ${rows ? `<div class="ins">${rows}</div>` : `<p style="margin:0">Nothing to compare yet. Tick the steps you use and rate your skin each day. A product shows up here once you have rated days both with it and without it.</p>`}</section>`;
 }
 function slotList(slot, ids, done, custom, r) {
-  const items = ids.length ? `<ol>${ids.map(id => { const p = prod(id), st = r ? stepState(r, slot, id) : ""; return `<li class="${st}"><span class="mini-icon" style="--c:var(--s${p.step})">${svgIcon(iconOf(p))}</span><span>${esc(p.name)}</span>${st === "used" ? `<span class="tick" aria-label="used">✓</span>` : st === "skipped" ? `<span class="tick skip" aria-label="skipped">–</span>` : ""}</li>` }).join("")}</ol>` : `<div class="empty">Nothing planned</div>`;
+  const items = ids.length ? `<ol>${ids.map(id => { const p = prod(id), st = r ? stepState(r, slot, id) : ""; return `<li class="${st}"><span class="mini-icon" style="--c:var(--s${p.step})">${svgIcon(iconOf(p))}</span><span>${esc(p.name)}${p.finished ? ` <span class="mini ${p.finished.verdict === "repurchase" ? "ok" : "warn"}">${p.finished.verdict === "repurchase" ? "Rebuy" : "Replace"}</span>` : ""}</span>${st === "used" ? `<span class="tick" aria-label="used">✓</span>` : st === "skipped" ? `<span class="tick skip" aria-label="skipped">–</span>` : ""}</li>` }).join("")}</ol>` : `<div class="empty">Nothing planned</div>`;
   return `<div class="slot ${slot}"><div class="slot-head"><span>${slot === "am" ? "AM" : "PM"}${custom ? ` <span class="edited">edited</span>` : ""}</span>${done ? `<span class="done-mark" aria-label="Done">✓</span>` : ""}</div>${items}</div>`;
 }
 function legend() {
@@ -565,19 +619,44 @@ function renderTemplate() {
     <p class="muted" style="margin:0;max-width:60ch">Every calendar day follows this template unless you edit that day. Tap a weekday to change it.</p>
     <div class="tpl-grid">${cards}</div>${legend()}</section>`;
 }
+function swapsFor(p) {
+  const alts = alternativesFor(p), inRoutine = Object.values(state.template?.week || {}).some(d => [...(d.am || []), ...(d.pm || [])].includes(p.id));
+  if (!alts.length) return `<div class="swaps"><span class="muted" style="font-size:13.5px">No suggestions for this step yet. Add the product you'd like to try below.</span></div>`;
+  return `<div class="swaps"><span class="eyebrow">Try instead</span><div class="suggest">${alts.map((a, i) => `<div class="card">${thumb(a, 44)}<span class="eyebrow">${STEPS[a.step]} · ${esc(a.brand)}</span><b>${esc(a.name)}</b><span class="muted" style="font-size:13.5px">${esc(a.why)}</span>
+    <div class="btns">${inRoutine ? `<button class="btn small primary" data-act="swap" data-id="${p.id}" data-i="${i}">Swap into routine</button>` : ""}${a.owned ? `<span class="muted" style="font-size:13px;align-self:center">✓ On your shelf</span>` : `<button class="btn small" data-act="swap-add" data-id="${p.id}" data-i="${i}">Add to shelf</button>`}</div></div>`).join("")}</div></div>`;
+}
+function finishProduct(id, verdict) {
+  const tpl = structuredClone(state.template), p = tpl.products.find(x => x.id === id);
+  if (verdict) p.finished = { verdict, on: todayKey() }; else delete p.finished;
+  state.finishAsk = null; saveTemplate(tpl);
+  toast(!verdict ? `${p.name} is back in use.` : verdict === "repurchase" ? `Marked as finished. It's tagged in your routine to rebuy.` : `Marked as finished. Alternatives are below.`);
+}
+function newProduct(a) { return { id: "p_" + Date.now().toString(36), name: a.name, brand: a.brand, step: a.step, kinds: a.kinds || [] } }
+function swapIn(id, i, swap) {
+  const tpl = structuredClone(state.template), old = tpl.products.find(x => x.id === id), a = alternativesFor(old)[i]; if (!a) return;
+  let np = a.owned ? tpl.products.find(x => x.id === a.owned.id) : null;
+  if (!np) { np = newProduct(a); tpl.products.push(np) }
+  if (swap) for (const d of Object.values(tpl.week)) for (const s of ["am", "pm"]) if ((d[s] || []).includes(id)) d[s] = [...new Set(d[s].map(x => x === id ? np.id : x))];
+  state.template = tpl; for (const d of Object.values(tpl.week)) for (const s of ["am", "pm"]) d[s] = sortIds(d[s] || []);
+  saveTemplate(tpl);
+  toast(swap ? `Swapped ${np.name} into your weekly routine.` : `Added ${np.name} to your shelf. Plan it in under Routine.`);
+}
 function renderProducts() {
-  const rows = products().slice().sort((a, b) => rank(a.step) - rank(b.step)).map(p => `<div class="prod-row">
+  const rows = products().slice().sort((a, b) => rank(a.step) - rank(b.step)).map(p => `<div class="prod-row" id="prod-${p.id}">
     <button class="icon-pick" data-act="icon-open" data-id="${p.id}" aria-label="Change icon for ${esc(p.name)}" aria-expanded="${state.iconPick === p.id}">${thumb(p, 56)}</button>
     ${state.editProd === p.id ? `<form class="edit-prod" id="editForm" data-id="${p.id}">
         <label class="field">Brand<input class="input" id="e-brand" value="${esc(p.brand)}"></label>
         <label class="field">Exact product name<input class="input" id="e-name" value="${esc(p.name)}" required></label>
         <div class="kinds-row"><span class="muted">Contains:</span>${Object.entries(KINDS).map(([k, l]) => `<label><input type="checkbox" id="e-k-${k}"${(p.kinds || []).includes(k) ? " checked" : ""}> ${l}</label>`).join("")}</div>
         <div style="display:flex;gap:6px"><button class="btn small primary" type="submit">Save</button><button class="btn small ghost" type="button" data-act="edit-cancel">Cancel</button></div></form>`
-      : `<div style="min-width:0"><div class="br">${esc(p.brand)}</div><div class="nm">${esc(p.name)}${(p.kinds || []).map(k => `<span class="chip ${k}">${KINDS[k]}</span>`).join("")}</div></div>`}
+      : `<div style="min-width:0"><div class="br">${esc(p.brand)}</div><div class="nm">${esc(p.name)}${(p.kinds || []).map(k => `<span class="chip ${k}">${KINDS[k]}</span>`).join("")}</div>${finishBadge(p, false)}</div>`}
     <select aria-label="Step for ${esc(p.name)}" data-act="prod-step" data-id="${p.id}">${STEP_LIST.map(([n, s]) => `<option value="${n}"${+n === p.step ? " selected" : ""}>${s}</option>`).join("")}</select>
     <div class="acts">${state.confirmRemove === p.id
       ? `<button class="btn small" data-act="remove-yes" data-id="${p.id}" style="color:var(--warn);border-color:var(--warn)">Remove</button> <button class="btn small ghost" data-act="remove-no">Keep</button>`
-      : `<button class="btn small ghost" data-act="edit" data-id="${p.id}">Edit</button><button class="btn small ghost" data-act="remove" data-id="${p.id}">Remove</button>`}</div>
+      : `${canFinish(p) ? p.finished ? `<button class="btn small ghost" data-act="unfinish" data-id="${p.id}">Not finished</button>` : `<button class="btn small ghost" data-act="finish-ask" data-id="${p.id}">Finished</button>` : ""}<button class="btn small ghost" data-act="edit" data-id="${p.id}">Edit</button><button class="btn small ghost" data-act="remove" data-id="${p.id}">Remove</button>`}</div>
+    ${state.finishAsk === p.id ? `<div class="finish-ask"><span class="eyebrow">Finished it. Would you buy it again?</span><div class="btns">
+      <button class="btn small" data-act="finish" data-id="${p.id}" data-v="repurchase">Repurchase</button><button class="btn small" data-act="finish" data-id="${p.id}" data-v="no">Won't repurchase</button><button class="btn small ghost" data-act="finish-cancel">Cancel</button></div></div>` : ""}
+    ${p.finished?.verdict === "no" ? swapsFor(p) : ""}
     ${state.iconPick === p.id ? `<div class="icon-grid" role="group" aria-label="Pick an icon">${Object.keys(ICONS).map(n => `<button data-act="icon-set" data-id="${p.id}" data-icon="${n}" title="${n.replace(/-/g, " ")}" aria-pressed="${iconOf(p) === n}" style="--c:var(--s${p.step})">${svgIcon(n)}</button>`).join("")}</div>` : ""}</div>`).join("");
   const owned = new Set(products().map(p => (p.brand + p.name).toLowerCase()));
   const sugg = SUGGESTIONS.map((s, i) => `<div class="card">${thumb(s, 44)}<span class="eyebrow">${STEPS[s.step]} · ${esc(s.brand)}</span><b>${esc(s.name)}</b><span class="muted" style="font-size:13.5px">${esc(s.why)}</span>
@@ -680,6 +759,12 @@ document.addEventListener("click", e => {
   else if (act === "import-open") { state.sheet = { type: "import" }; render(); document.getElementById("imp-text")?.focus() }
   else if (act === "import-text") importText(document.getElementById("imp-text").value);
   else if (act === "backup") saveBackup();
+  else if (act === "finish-ask") { state.finishAsk = el.dataset.id; render() }
+  else if (act === "finish-cancel") { state.finishAsk = null; render() }
+  else if (act === "finish") finishProduct(el.dataset.id, el.dataset.v);
+  else if (act === "unfinish") finishProduct(el.dataset.id, null);
+  else if (act === "swap" || act === "swap-add") swapIn(el.dataset.id, +el.dataset.i, act === "swap");
+  else if (act === "find-swap") { e.preventDefault(); flushNote(); state.sheet = null; state.tab = "products"; render(); document.getElementById("prod-" + el.dataset.id)?.scrollIntoView({ block: "start", behavior: "smooth" }) }
   else if (act === "edit") { state.editProd = el.dataset.id; state.iconPick = null; render(); document.getElementById("e-name")?.focus() }
   else if (act === "edit-cancel") { state.editProd = null; render() }
   else if (act === "icon-open") { state.iconPick = state.iconPick === el.dataset.id ? null : el.dataset.id; render() }
@@ -816,7 +901,7 @@ function buildTemplate(list) {
 }
 function finishImport(tpl) {
   state.sheet = null; state.tab = isMobile() ? "today" : "week"; saveTemplate(tpl);
-  toast(`Imported ${tpl.products.length} product${tpl.products.length === 1 ? "" : "s"}. Check the steps on your shelf, and tap a weekday under Routine to change a day.`);
+  toast(`Imported ${tpl.products.length} product${tpl.products.length === 1 ? "" : "s"}. Check their steps on your shelf.`);
 }
 function importText(text) {
   const tpl = parseRoutine(text || "");
@@ -848,7 +933,7 @@ async function importFile(file) {
 function addProduct(p) {
   const tpl = structuredClone(state.template || { products: [], week: {} });
   tpl.products.push({ id: "p_" + Date.now().toString(36), name: p.name, brand: p.brand, step: p.step, kinds: p.kinds, ...(p.icon ? { icon: p.icon } : {}) });
-  saveTemplate(tpl); toast(`Added ${p.name}. Tap its icon to change it, and pick it in the weekly template or on a single day.`);
+  saveTemplate(tpl); toast(`Added ${p.name} to your shelf. Plan it in under Routine.`);
 }
 
 /* ---------- boot ---------- */
