@@ -1,6 +1,6 @@
 // Offline support. The page itself is fetched fresh when online (so updates show on the next open)
 // and falls back to the cache when offline; other files come from the cache and refresh in the background.
-const CACHE = "skin-diary-v13";
+const CACHE = "skin-diary-v14";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icons/icon-192.png", "./icons/icon-512.png"];
 
 self.addEventListener("install", e => {

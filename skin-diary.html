@@ -85,6 +85,10 @@ nav.tabs button[aria-selected="true"] { background: var(--ink); color: var(--bg)
 .today-intro { display: grid; align-content: start; gap: 16px; padding: 6px; min-width: 0 }
 .today-intro .date { font-family: var(--serif); font-size: 40px; line-height: 1 }
 .today-intro .date em { color: var(--accent) }
+.day-nav { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; flex-basis: 100% }
+.day-nav .btn:not(.primary) { min-width: 36px; min-height: 36px; font-size: 18px; line-height: 1; padding: 6px 12px }
+.date-pick { border: 1px solid var(--line); background: var(--surface-solid); color: var(--ink); border-radius: 999px; padding: 6px 12px; min-height: 36px; font: inherit; font-size: 13.5px; color-scheme: light dark }
+.night-hint { flex-basis: 100%; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding: 12px 14px; border-radius: 16px; background: linear-gradient(140deg, var(--pm-1), var(--pm-2)); color: var(--pm-ink); font-size: 13.5px; font-weight: 400 }
 .today-intro .rating button { padding: 4px 11px; font-size: 13px }
 .today-note { margin: 0; font-family: var(--serif); font-style: italic; font-size: 17px; line-height: 1.3; overflow-wrap: anywhere }
 .ritual { border-radius: 20px; padding: 18px 18px 14px; display: grid; gap: 10px; align-content: start; min-width: 0 }
@@ -417,8 +421,10 @@ function routineFor(key) {
   r.complete = (r.am.length + r.pm.length > 0) && (!r.am.length || r.amDone) && (!r.pm.length || r.pmDone);
   return r;
 }
-/* A step only counts as skipped once its day is over: until then an unticked step is just not done yet. */
-function stepState(r, slot, id) { return r[slot + "Used"].includes(id) ? "used" : r[slot + "Skipped"].includes(id) || r[slot + "Logged"] && r.key < todayKey() ? "skipped" : "" }
+/* A step only counts as skipped once its day is over: until then an unticked step is just not done yet.
+   Yesterday stays open too, so last night's routine can be logged after midnight one tick at a time. */
+const yesterdayKey = () => keyOf(addDays(new Date(), -1));
+function stepState(r, slot, id) { return r[slot + "Used"].includes(id) ? "used" : r[slot + "Skipped"].includes(id) || r[slot + "Logged"] && r.key < yesterdayKey() ? "skipped" : "" }
 function toggleUse(key, slot, id) {
   const r = routineFor(key), used = new Set(r[slot + "Used"]), day = { ...(state.days[key] || {}) };
   used.has(id) ? used.delete(id) : used.add(id);
@@ -514,7 +520,7 @@ function render() {
   document.querySelectorAll(".bottom-nav button").forEach(b => b.setAttribute("aria-current", b.dataset.tab === tab ? "page" : "false"));
   document.querySelectorAll("nav.tabs button").forEach(b => b.setAttribute("aria-selected", b.dataset.tab === tab));
   const main = document.getElementById("main"), a = document.activeElement;
-  if (main.contains(a) && a.matches("input:not([type=checkbox]), textarea")) { renderSheet(); return }
+  if (main.contains(a) && a.matches("input:not([type=checkbox]):not([type=date]), textarea")) { renderSheet(); return }
   if (!state.tplLoaded) main.innerHTML = `<div class="glass empty-state"><p class="muted">Loading your routine…</p></div>`;
   else if (tab === "today") main.innerHTML = state.template ? renderToday() + renderInsights() : emptyState();
   else if (tab === "week") main.innerHTML = state.template ? (isMobile() ? renderWeek() : renderToday() + renderWeek() + renderInsights()) : emptyState();
@@ -526,17 +532,28 @@ function emptyState() {
   return `<div class="glass empty-state"><h2>Welcome to your <em>skin diary</em></h2><p class="muted">Start by bringing in your own routine. Paste your products as a list, or add them one at a time on your shelf. Every day in the calendar fills in from your routine.</p>
     <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center"><button class="btn primary" data-act="import-open">Import my routine</button><button class="btn" data-act="tab" data-tab="products">Add products one by one</button></div></div>`;
 }
+function dayName(k) {
+  const diff = Math.round((fromKey(k) - fromKey(todayKey())) / 864e5);
+  return diff === 0 ? "Today" : diff === -1 ? "Yesterday" : diff === 1 ? "Tomorrow" : diff < 0 ? `${-diff} days ago` : `In ${diff} days`;
+}
 function renderToday() {
-  const k = todayKey(), d = fromKey(k), r = routineFor(k);
+  const tk = todayKey(), k = state.dayKey || tk, d = fromKey(k), r = routineFor(k), isToday = k === tk;
+  const yk = yesterdayKey(), yr = isToday && new Date().getHours() < 5 ? routineFor(yk) : null;
+  const nightHint = yr && yr.pm.length && !yr.pmDone ? `<div class="night-hint"><span>Still up? Last night's evening routine isn't logged yet.</span><button class="btn small primary" data-act="day-go" data-key="${yk}">Log last night</button></div>` : "";
   const ritual = slot => `<div class="ritual ${slot}">
     <div class="ritual-head"><h3>${slot === "am" ? "Morning" : "Evening"}</h3>
       <button class="done-btn" data-act="done-all" data-key="${k}" data-slot="${slot}" aria-pressed="${r[slot + "Done"]}">${r[slot + "Done"] ? "✓ All done" : "Tick all"}</button></div>
     ${steps(k, r, slot, true)}
-    ${rateRow(k, slot, r.day, slot === "am" ? "Skin this morning · pick all that fit" : "Skin tonight · pick all that fit")}
+    ${rateRow(k, slot, r.day, isToday ? (slot === "am" ? "Skin this morning · pick all that fit" : "Skin tonight · pick all that fit") : (slot === "am" ? "Skin that morning · pick all that fit" : "Skin that evening · pick all that fit"))}
   </div>`;
-  return `<section class="glass today" aria-label="Today">
+  return `<section class="glass today" aria-label="${isToday ? "Today" : "Day " + k}">
     <div class="today-intro">
-      <div style="display:grid;gap:6px"><span class="eyebrow">Today</span>
+      <div class="day-nav"><button class="btn small" data-act="day-step" data-n="-1" aria-label="Previous day">‹</button>
+        <input class="date-pick" type="date" data-act="day-pick" value="${k}" aria-label="Pick a date">
+        <button class="btn small" data-act="day-step" data-n="1" aria-label="Next day">›</button>
+        ${isToday ? "" : `<button class="btn small primary" data-act="day-go" data-key="${tk}">Back to today</button>`}</div>
+      ${nightHint}
+      <div style="display:grid;gap:6px"><span class="eyebrow">${dayName(k)}</span>
         <div class="date">${DOW[d.getDay()]}<br><em>${d.toLocaleDateString(undefined, { day: "numeric", month: "long" })}</em></div>
         ${r.complete ? `<span class="complete-badge">✓ Day completed</span>` : ""}</div>
       ${r.label ? `<span class="tag" style="margin:0;justify-self:start">${esc(r.label)}</span>` : ""}
@@ -741,7 +758,7 @@ document.addEventListener("toggle", e => { if (e.target.id?.startsWith("plan-"))
 document.addEventListener("click", e => {
   const el = e.target.closest("[data-act]"); if (!el) return;
   const act = el.dataset.act;
-  if (act === "tab") { state.tab = el.dataset.tab; state.sheet = null; render() }
+  if (act === "tab") { if (el.dataset.tab === "today") state.dayKey = null; state.tab = el.dataset.tab; state.sheet = null; render() }
   else if (act === "week") { const n = +el.dataset.n; state.weekStart = n ? addDays(state.weekStart, 7 * n) : mondayOf(new Date()); render() }
   else if (act === "open-day") { state.sheet = { type: "day", key: el.dataset.key }; state.openPlan = {}; render() }
   else if (act === "open-tpl") { state.sheet = { type: "tpl", dow: +el.dataset.dow }; render() }
@@ -759,6 +776,8 @@ document.addEventListener("click", e => {
   else if (act === "import-open") { state.sheet = { type: "import" }; render(); document.getElementById("imp-text")?.focus() }
   else if (act === "import-text") importText(document.getElementById("imp-text").value);
   else if (act === "backup") saveBackup();
+  else if (act === "day-step") { const k = keyOf(addDays(fromKey(state.dayKey || todayKey()), +el.dataset.n)); state.dayKey = k === todayKey() ? null : k; render() }
+  else if (act === "day-go") { state.dayKey = el.dataset.key === todayKey() ? null : el.dataset.key; state.tab = isMobile() ? "today" : "week"; render(); document.querySelector(".today")?.scrollIntoView({ block: "start", behavior: "smooth" }) }
   else if (act === "finish-ask") { state.finishAsk = el.dataset.id; render() }
   else if (act === "finish-cancel") { state.finishAsk = null; render() }
   else if (act === "finish") finishProduct(el.dataset.id, el.dataset.v);
@@ -784,6 +803,7 @@ document.addEventListener("change", e => {
   if (act === "use") toggleUse(el.dataset.key, el.dataset.slot, el.dataset.id);
   else if (act === "restore" && el.files?.[0]) restoreBackup(el.files[0]);
   else if (act === "import-file" && el.files?.[0]) importFile(el.files[0]);
+  else if (act === "day-pick" && /^\d{4}-\d{2}-\d{2}$/.test(el.value)) { el.blur(); state.dayKey = el.value === todayKey() ? null : el.value; render() }
   else if (act === "pick") {
     const s = state.sheet, slot = el.dataset.slot, id = el.dataset.id;
     if (s.type === "day") {

@@ -14,6 +14,7 @@ A weekly skincare calendar: plan morning and evening products for each day, tick
 
 - **Phone layout:** a bottom tab bar with Today, Week, Routine and Shelf.
 - **Today:** numbered morning and evening steps with a checkbox and a Skip button for each step. A day is marked completed once every step is ticked or skipped.
+- **Other days:** arrows and a date picker on Today open any day to log it. Yesterday stays open for logging, and after midnight a hint offers to log last night's evening routine.
 - **Week view:** seven day cards that fill in from a repeating weekly template. Any single day can be edited.
 - **Weekly template:** a default routine for each weekday, for example retinol nights, an exfoliation night and recovery nights.
 - **Products:** your shelf with exact product names, a step for each product and an icon. You can add, edit and remove products. Warnings flag risky combinations, for example retinol and an acid in the same routine.
