@@ -105,6 +105,9 @@ nav.tabs button[aria-selected="true"] { background: var(--ink); color: var(--bg)
 .day-nav { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; flex-basis: 100% }
 .day-nav .btn:not(.primary) { min-width: 36px; min-height: 36px; font-size: 18px; line-height: 1; padding: 6px 12px }
 .date-pick { border: 1px solid var(--line); background: var(--surface-solid); color: var(--ink); border-radius: 999px; padding: 6px 12px; min-height: 36px; font: inherit; font-size: 13.5px; color-scheme: light dark }
+.add-oneoff { justify-self: start; margin-top: 6px; color: var(--muted) }
+.oneoff-form { display: grid; gap: 8px; margin-top: 10px; padding: 12px; border-radius: 16px; background: color-mix(in srgb, var(--surface-solid) 70%, transparent); border: 1px solid var(--line) }
+.oneoff-form .eyebrow { letter-spacing: .06em; text-transform: none; font-size: 12px; font-weight: 400 }
 .night-hint { flex-basis: 100%; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding: 12px 14px; border-radius: 16px; background: linear-gradient(140deg, var(--pm-1), var(--pm-2)); color: var(--pm-ink); font-size: 13.5px; font-weight: 400 }
 .today-intro .rating button { padding: 4px 11px; font-size: 13px }
 .today-note { margin: 0; font-family: var(--serif); font-style: italic; font-size: 17px; line-height: 1.3; overflow-wrap: anywhere }
@@ -245,6 +248,9 @@ button.mini { font: inherit; font-size: 11.5px; cursor: pointer }
 .prod-row .fin-badge { margin-top: 6px }
 .finish-ask, .swaps { grid-column: 1 / -1; display: grid; gap: 10px; padding-top: 4px }
 .finish-ask .btns { display: flex; flex-wrap: wrap; gap: 6px }
+.in-routine { font-size: 12.5px; margin-top: 4px; color: var(--ok) }
+.add-to .rating button { padding: 4px 11px; font-size: 13px }
+.btn:disabled { opacity: .45; cursor: default }
 .swaps .suggest { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)) }
 .swaps .card .btns { display: flex; flex-wrap: wrap; gap: 6px }
 .add-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; align-items: end }
@@ -386,7 +392,7 @@ function finishBadge(p, link) {
   return link ? `<button class="mini warn fin-badge" data-act="find-swap" data-id="${p.id}">Replace · see swaps</button>` : `<span class="mini warn fin-badge">Finished · won't repurchase</span>`;
 }
 function alternativesFor(p) {
-  const own = new Map(products().map(x => [(x.brand + "|" + x.name).toLowerCase(), x]));
+  const own = new Map(shelf().map(x => [(x.brand + "|" + x.name).toLowerCase(), x]));
   return (ALTERNATIVES[p.step] || []).filter(a => (a.brand + "|" + a.name).toLowerCase() !== (p.brand + "|" + p.name).toLowerCase())
     .map(a => ({ ...a, step: p.step, kinds: a.kinds || [], owned: own.get((a.brand + "|" + a.name).toLowerCase()) }));
 }
@@ -404,6 +410,8 @@ const todayKey = () => keyOf(new Date());
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const products = () => (state.template?.products || []);
 const prod = id => products().find(p => p.id === id);
+/* One-off products (a sample, a product tried once) live in the template so days can refer to them, but stay off the shelf. */
+const shelf = () => products().filter(p => !p.oneOff);
 const sortIds = ids => [...new Set(ids)].filter(prod).sort((a, b) => rank(prod(a).step) - rank(prod(b).step));
 const sameList = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
 const dot = p => `<span class="dot" style="background:var(--s${p.step})" aria-hidden="true"></span>`;
@@ -427,7 +435,7 @@ const thumb = (p, size = 40) => `<span class="thumb icon" style="width:${size}px
 function tplDay(dow) { return state.template?.week?.[dow] || { am: [], pm: [], label: "" } }
 function routineFor(key) {
   const t = tplDay(fromKey(key).getDay()), d = state.days[key] || {};
-  const r = { key, am: sortIds(d.am ?? t.am ?? []), pm: sortIds(d.pm ?? t.pm ?? []), customAm: Array.isArray(d.am), customPm: Array.isArray(d.pm), label: t.label || "", day: d };
+  const r = { key, am: sortIds([...(d.am ?? t.am ?? []), ...(d.amExtra || [])]), pm: sortIds([...(d.pm ?? t.pm ?? []), ...(d.pmExtra || [])]), customAm: Array.isArray(d.am), customPm: Array.isArray(d.pm), label: t.label || "", day: d };
   for (const s of ["am", "pm"]) {
     const u = d[s + "Used"];
     r[s + "Logged"] = Array.isArray(u) || !!d[s + "Done"];
@@ -561,6 +569,7 @@ function renderToday() {
     <div class="ritual-head"><h3>${slot === "am" ? "Morning" : "Evening"}</h3>
       <button class="done-btn" data-act="done-all" data-key="${k}" data-slot="${slot}" aria-pressed="${r[slot + "Done"]}">${r[slot + "Done"] ? "✓ All done" : "Tick all"}</button></div>
     ${steps(k, r, slot, true)}
+    ${oneOffRow(k, slot)}
     ${rateRow(k, slot, r.day, isToday ? (slot === "am" ? "Skin this morning · pick all that fit" : "Skin tonight · pick all that fit") : (slot === "am" ? "Skin that morning · pick all that fit" : "Skin that evening · pick all that fit"))}
   </div>`;
   return `<section class="glass today" aria-label="${isToday ? "Today" : "Day " + k}">
@@ -581,11 +590,29 @@ function renderToday() {
     ${ritual("am")}${ritual("pm")}
   </section>`;
 }
+function oneOffRow(key, slot) {
+  const o = state.oneOff;
+  if (!(o && o.key === key && o.slot === slot)) return `<button class="btn small ghost add-oneoff" data-act="oneoff-open" data-key="${key}" data-slot="${slot}">+ One-off product</button>`;
+  return `<form class="oneoff-form" id="oneOffForm" data-key="${key}" data-slot="${slot}"><span class="eyebrow">A sample or something you're trying once. It's logged on this day only and stays off your shelf.</span>
+    <label class="field">Brand<input class="input" id="oo-brand" placeholder="e.g. Aestura"></label>
+    <label class="field">Exact product name<input class="input" id="oo-name" required placeholder="e.g. Atobarrier 365 Cream"></label>
+    <label class="field">Step<select class="input" id="oo-step">${STEP_LIST.map(([n, l]) => `<option value="${n}"${n === "6" ? " selected" : ""}>${l}</option>`).join("")}</select></label>
+    <div class="kinds-row"><span class="muted">Contains:</span>${Object.entries(KINDS).map(([k, l]) => `<label><input type="checkbox" id="oo-k-${k}"> ${l}</label>`).join("")}</div>
+    <div style="display:flex;gap:6px"><button class="btn small primary" type="submit">Add to ${slot === "am" ? "morning" : "evening"}</button><button class="btn small ghost" type="button" data-act="oneoff-cancel">Cancel</button></div></form>`;
+}
+function addOneOff(key, slot, p) {
+  const tpl = structuredClone(state.template || { products: [], week: {} }), id = "x_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  tpl.products.push({ id, name: p.name, brand: p.brand, step: p.step, kinds: p.kinds, oneOff: true, addedOn: key });
+  state.oneOff = null; saveTemplate(tpl);
+  const day = { ...(state.days[key] || {}) };
+  day[slot + "Extra"] = [...(day[slot + "Extra"] || []), id]; saveDay(key, day);
+  toast(`Added ${p.name} to this ${slot === "am" ? "morning" : "evening"} only.`);
+}
 function steps(key, r, slot, numbered) {
   if (!r[slot].length) return `<p class="muted" style="margin:0">Nothing planned.</p>`;
   return `<ol class="steps${numbered ? " numbered" : ""}">${r[slot].map(id => { const p = prod(id), st = stepState(r, slot, id); return `<li class="${st}"><label class="step">
     <input type="checkbox" data-act="use" data-key="${key}" data-slot="${slot}" data-id="${id}"${st === "used" ? " checked" : ""}>
-    ${thumb(p, 40)}<span class="txt"><span class="nm">${esc(p.name)}</span><span class="sub">${p.brand ? esc(p.brand) + " · " : ""}${STEPS[p.step]}${st === "skipped" ? " · skipped" : ""}</span>${finishBadge(p, true)}</span></label>
+    ${thumb(p, 40)}<span class="txt"><span class="nm">${esc(p.name)}</span><span class="sub">${p.brand ? esc(p.brand) + " · " : ""}${STEPS[p.step]}${st === "skipped" ? " · skipped" : ""}</span>${p.oneOff ? `<span class="mini fin-badge">One-off</span>` : ""}${finishBadge(p, true)}</span></label>
     <button class="skip-btn" data-act="skip" data-key="${key}" data-slot="${slot}" data-id="${id}" aria-pressed="${st === "skipped"}">${st === "skipped" ? "Undo skip" : "Skip"}</button></li>` }).join("")}</ol>`;
 }
 function renderInsights() {
@@ -601,11 +628,11 @@ function renderInsights() {
     ${rows ? `<div class="ins">${rows}</div>` : `<p style="margin:0">Nothing to compare yet. Tick the steps you use and rate your skin each day. A product shows up here once you have rated days both with it and without it.</p>`}</section>`;
 }
 function slotList(slot, ids, done, custom, r) {
-  const items = ids.length ? `<ol>${ids.map(id => { const p = prod(id), st = r ? stepState(r, slot, id) : ""; return `<li class="${st}"><span class="mini-icon" style="--c:var(--s${p.step})">${svgIcon(iconOf(p))}</span><span>${esc(p.name)}${p.finished ? ` <span class="mini ${p.finished.verdict === "repurchase" ? "ok" : "warn"}">${p.finished.verdict === "repurchase" ? "Rebuy" : "Replace"}</span>` : ""}</span>${st === "used" ? `<span class="tick" aria-label="used">✓</span>` : st === "skipped" ? `<span class="tick skip" aria-label="skipped">–</span>` : ""}</li>` }).join("")}</ol>` : `<div class="empty">Nothing planned</div>`;
+  const items = ids.length ? `<ol>${ids.map(id => { const p = prod(id), st = r ? stepState(r, slot, id) : ""; return `<li class="${st}"><span class="mini-icon" style="--c:var(--s${p.step})">${svgIcon(iconOf(p))}</span><span>${esc(p.name)}${p.oneOff ? ` <span class="mini">One-off</span>` : ""}${p.finished ? ` <span class="mini ${p.finished.verdict === "repurchase" ? "ok" : "warn"}">${p.finished.verdict === "repurchase" ? "Rebuy" : "Replace"}</span>` : ""}</span>${st === "used" ? `<span class="tick" aria-label="used">✓</span>` : st === "skipped" ? `<span class="tick skip" aria-label="skipped">–</span>` : ""}</li>` }).join("")}</ol>` : `<div class="empty">Nothing planned</div>`;
   return `<div class="slot ${slot}"><div class="slot-head"><span>${slot === "am" ? "AM" : "PM"}${custom ? ` <span class="edited">edited</span>` : ""}</span>${done ? `<span class="done-mark" aria-label="Done">✓</span>` : ""}</div>${items}</div>`;
 }
 function legend() {
-  const used = [...new Set(products().map(p => p.step))].sort((a, b) => rank(a) - rank(b));
+  const used = [...new Set(shelf().map(p => p.step))].sort((a, b) => rank(a) - rank(b));
   return `<div class="legend">${used.map(s => `<span><span class="dot" style="background:var(--s${s})"></span>${STEPS[s]}</span>`).join("")}</div>`;
 }
 function renderWeek() {
@@ -653,6 +680,39 @@ function renderTemplate() {
     <p class="muted" style="margin:0;max-width:60ch">Every calendar day follows this template unless you edit that day. Tap a weekday to change it.</p>
     <div class="tpl-grid">${cards}</div>${legend()}</section>`;
 }
+/* Where a shelf product is used in the weekly routine, e.g. "Every morning · Mon, Fri evenings". */
+function routineSummary(p) {
+  const wk = state.template?.week || {}, order = [1, 2, 3, 4, 5, 6, 0], short = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const part = (slot, word) => { const ds = order.filter(d => (wk[d]?.[slot] || []).includes(p.id)); return !ds.length ? "" : ds.length === 7 ? `Every ${word}` : `${ds.map(d => short[d]).join(", ")} ${word}s` };
+  const parts = [part("am", "morning"), part("pm", "evening")].filter(Boolean);
+  return parts.length ? `In your routine · ${parts.join(" · ")}` : `<span class="muted">Not in your routine yet</span>`;
+}
+function addToDefaults(p) {
+  const k = p.kinds || [], am = !k.includes("retinoid") && !k.includes("acid"), pm = !k.includes("spf") && +p.step !== 8;
+  return { id: p.id, am, pm: pm || !am, days: [0, 1, 2, 3, 4, 5, 6] };
+}
+function addToPanel(p) {
+  const a = state.addTo, order = [1, 2, 3, 4, 5, 6, 0], short = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  return `<div class="finish-ask add-to"><span class="eyebrow">When do you use it?</span>
+    <div class="rating"><button data-act="addto-slot" data-slot="am" aria-pressed="${a.am}">Morning</button><button data-act="addto-slot" data-slot="pm" aria-pressed="${a.pm}">Evening</button></div>
+    <span class="eyebrow">Which days?</span>
+    <div class="rating"><button data-act="addto-day" data-d="all" aria-pressed="${a.days.length === 7}">Every day</button>${order.map(d => `<button data-act="addto-day" data-d="${d}" aria-pressed="${a.days.includes(d)}">${short[d]}</button>`).join("")}</div>
+    <div class="btns"><button class="btn small primary" data-act="addto-save"${(!a.am && !a.pm) || !a.days.length ? " disabled" : ""}>Add to routine</button><button class="btn small" data-act="addto-today"${!a.am && !a.pm ? " disabled" : ""}>Just today</button><button class="btn small ghost" data-act="addto-cancel">Cancel</button></div></div>`;
+}
+function addToRoutine(today) {
+  const a = state.addTo, p = prod(a.id), slots = ["am", "pm"].filter(s => a[s]); if (!p || !slots.length) return;
+  const when = slots.map(s => s === "am" ? "morning" : "evening").join(" and ");
+  if (today) {
+    const k = todayKey(), day = { ...(state.days[k] || {}) }, tplIds = tplDay(fromKey(k).getDay());
+    for (const s of slots) { const cur = sortIds(day[s] ?? tplIds[s] ?? []); if (!cur.includes(p.id)) day[s] = sortIds([...cur, p.id]) }
+    state.addTo = null; saveDay(k, day); render(); toast(`Added ${p.name} to this ${when} only.`); return;
+  }
+  const tpl = structuredClone(state.template); tpl.week = tpl.week || {};
+  for (const d of a.days) { const t = tpl.week[d] || { am: [], pm: [], label: "" }; for (const s of slots) t[s] = [...new Set([...(t[s] || []), p.id])]; tpl.week[d] = t }
+  state.template = tpl; for (const d of a.days) for (const s of slots) tpl.week[d][s] = sortIds(tpl.week[d][s]);
+  state.addTo = null; saveTemplate(tpl);
+  toast(`Added ${p.name} to your ${when} routine${a.days.length === 7 ? " every day" : ` on ${a.days.length} day${a.days.length === 1 ? "" : "s"}`}.`);
+}
 function swapsFor(p) {
   const alts = alternativesFor(p), inRoutine = Object.values(state.template?.week || {}).some(d => [...(d.am || []), ...(d.pm || [])].includes(p.id));
   if (!alts.length) return `<div class="swaps"><span class="muted" style="font-size:13.5px">No suggestions for this step yet. Add the product you'd like to try below.</span></div>`;
@@ -665,7 +725,7 @@ function finishProduct(id, verdict) {
   state.finishAsk = null; saveTemplate(tpl);
   toast(!verdict ? `${p.name} is back in use.` : verdict === "repurchase" ? `Marked as finished. It's tagged in your routine to rebuy.` : `Marked as finished. Alternatives are below.`);
 }
-function newProduct(a) { return { id: "p_" + Date.now().toString(36), name: a.name, brand: a.brand, step: a.step, kinds: a.kinds || [] } }
+function newProduct(a) { return { id: "p_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name: a.name, brand: a.brand, step: a.step, kinds: a.kinds || [] } }
 function swapIn(id, i, swap) {
   const tpl = structuredClone(state.template), old = tpl.products.find(x => x.id === id), a = alternativesFor(old)[i]; if (!a) return;
   let np = a.owned ? tpl.products.find(x => x.id === a.owned.id) : null;
@@ -673,26 +733,27 @@ function swapIn(id, i, swap) {
   if (swap) for (const d of Object.values(tpl.week)) for (const s of ["am", "pm"]) if ((d[s] || []).includes(id)) d[s] = [...new Set(d[s].map(x => x === id ? np.id : x))];
   state.template = tpl; for (const d of Object.values(tpl.week)) for (const s of ["am", "pm"]) d[s] = sortIds(d[s] || []);
   saveTemplate(tpl);
-  toast(swap ? `Swapped ${np.name} into your weekly routine.` : `Added ${np.name} to your shelf. Plan it in under Routine.`);
+  toast(swap ? `Swapped ${np.name} into your weekly routine.` : `Added ${np.name} to your shelf. Tap Add to routine on its card to use it.`);
 }
 function renderProducts() {
-  const rows = products().slice().sort((a, b) => rank(a.step) - rank(b.step)).map(p => `<div class="prod-row" id="prod-${p.id}">
+  const rows = shelf().sort((a, b) => rank(a.step) - rank(b.step)).map(p => `<div class="prod-row" id="prod-${p.id}">
     <button class="icon-pick" data-act="icon-open" data-id="${p.id}" aria-label="Change icon for ${esc(p.name)}" aria-expanded="${state.iconPick === p.id}">${thumb(p, 56)}</button>
     ${state.editProd === p.id ? `<form class="edit-prod" id="editForm" data-id="${p.id}">
         <label class="field">Brand<input class="input" id="e-brand" value="${esc(p.brand)}"></label>
         <label class="field">Exact product name<input class="input" id="e-name" value="${esc(p.name)}" required></label>
         <div class="kinds-row"><span class="muted">Contains:</span>${Object.entries(KINDS).map(([k, l]) => `<label><input type="checkbox" id="e-k-${k}"${(p.kinds || []).includes(k) ? " checked" : ""}> ${l}</label>`).join("")}</div>
         <div style="display:flex;gap:6px"><button class="btn small primary" type="submit">Save</button><button class="btn small ghost" type="button" data-act="edit-cancel">Cancel</button></div></form>`
-      : `<div style="min-width:0"><div class="br">${esc(p.brand)}</div><div class="nm">${esc(p.name)}${(p.kinds || []).map(k => `<span class="chip ${k}">${KINDS[k]}</span>`).join("")}</div>${finishBadge(p, false)}</div>`}
+      : `<div style="min-width:0"><div class="br">${esc(p.brand)}</div><div class="nm">${esc(p.name)}${(p.kinds || []).map(k => `<span class="chip ${k}">${KINDS[k]}</span>`).join("")}</div>${finishBadge(p, false)}<div class="in-routine">${routineSummary(p)}</div></div>`}
     <select aria-label="Step for ${esc(p.name)}" data-act="prod-step" data-id="${p.id}">${STEP_LIST.map(([n, s]) => `<option value="${n}"${+n === p.step ? " selected" : ""}>${s}</option>`).join("")}</select>
     <div class="acts">${state.confirmRemove === p.id
       ? `<button class="btn small" data-act="remove-yes" data-id="${p.id}" style="color:var(--warn);border-color:var(--warn)">Remove</button> <button class="btn small ghost" data-act="remove-no">Keep</button>`
-      : `${canFinish(p) ? p.finished ? `<button class="btn small ghost" data-act="unfinish" data-id="${p.id}">Not finished</button>` : `<button class="btn small ghost" data-act="finish-ask" data-id="${p.id}">Finished</button>` : ""}<button class="btn small ghost" data-act="edit" data-id="${p.id}">Edit</button><button class="btn small ghost" data-act="remove" data-id="${p.id}">Remove</button>`}</div>
+      : `<button class="btn small" data-act="addto-open" data-id="${p.id}">Add to routine</button>${canFinish(p) ? p.finished ? `<button class="btn small ghost" data-act="unfinish" data-id="${p.id}">Not finished</button>` : `<button class="btn small ghost" data-act="finish-ask" data-id="${p.id}">Finished</button>` : ""}<button class="btn small ghost" data-act="edit" data-id="${p.id}">Edit</button><button class="btn small ghost" data-act="remove" data-id="${p.id}">Remove</button>`}</div>
     ${state.finishAsk === p.id ? `<div class="finish-ask"><span class="eyebrow">Finished it. Would you buy it again?</span><div class="btns">
       <button class="btn small" data-act="finish" data-id="${p.id}" data-v="repurchase">Repurchase</button><button class="btn small" data-act="finish" data-id="${p.id}" data-v="no">Won't repurchase</button><button class="btn small ghost" data-act="finish-cancel">Cancel</button></div></div>` : ""}
+    ${state.addTo?.id === p.id ? addToPanel(p) : ""}
     ${p.finished?.verdict === "no" ? swapsFor(p) : ""}
     ${state.iconPick === p.id ? `<div class="icon-grid" role="group" aria-label="Pick an icon">${Object.keys(ICONS).map(n => `<button data-act="icon-set" data-id="${p.id}" data-icon="${n}" title="${n.replace(/-/g, " ")}" aria-pressed="${iconOf(p) === n}" style="--c:var(--s${p.step})">${svgIcon(n)}</button>`).join("")}</div>` : ""}</div>`).join("");
-  const owned = new Set(products().map(p => (p.brand + p.name).toLowerCase()));
+  const owned = new Set(shelf().map(p => (p.brand + p.name).toLowerCase()));
   const sugg = SUGGESTIONS.map((s, i) => `<div class="card">${thumb(s, 44)}<span class="eyebrow">${STEPS[s.step]} · ${esc(s.brand)}</span><b>${esc(s.name)}</b><span class="muted" style="font-size:13.5px">${esc(s.why)}</span>
     ${owned.has((s.brand + s.name).toLowerCase()) ? `<span class="muted" style="font-size:13px">✓ In your products</span>` : `<button class="btn small" data-act="add-sugg" data-i="${i}" style="justify-self:start">I bought this</button>`}</div>`).join("");
   return `<section class="glass panel"><h2>Your <em>shelf</em></h2>
@@ -720,9 +781,9 @@ function renderProducts() {
 
 /* ---------- sheet ---------- */
 function picker(slot, selected) {
-  return `<div class="picks">${products().slice().sort((a, b) => rank(a.step) - rank(b.step)).map(p => `<label class="pick">
+  return `<div class="picks">${products().filter(p => !p.oneOff || selected.includes(p.id)).sort((a, b) => rank(a.step) - rank(b.step)).map(p => `<label class="pick">
     <input type="checkbox" data-act="pick" data-slot="${slot}" data-id="${p.id}"${selected.includes(p.id) ? " checked" : ""}>
-    ${thumb(p, 34)}<span class="nm">${esc(p.name)}</span><span class="sub">${STEPS[p.step]} · ${esc(p.brand)}</span></label>`).join("")}</div>`;
+    ${thumb(p, 34)}<span class="nm">${esc(p.name)}</span><span class="sub">${STEPS[p.step]}${p.brand ? " · " + esc(p.brand) : ""}${p.oneOff ? " · one-off" : ""}</span></label>`).join("")}</div>`;
 }
 function renderSheet() {
   const root = document.getElementById("sheetRoot"), s = state.sheet;
@@ -752,6 +813,7 @@ function renderSheet() {
         <button class="done-btn" data-act="done-all" data-key="${s.key}" data-slot="${slot}" aria-pressed="${r[slot + "Done"]}">${r[slot + "Done"] ? "✓ All done" : "Tick all"}</button></div>
       ${warnings(slot, r[slot]).map(w => `<div class="warning">${esc(w)}</div>`).join("")}
       ${steps(s.key, r, slot, true)}
+      ${oneOffRow(s.key, slot)}
       ${rateRow(s.key, slot, day, slot === "am" ? "Skin in the morning" : "Skin in the evening")}
       <details id="plan-${slot}"${state.openPlan?.[slot] ? " open" : ""}><summary>Change products for this day</summary>
         <div style="display:grid;gap:8px;padding-top:8px">${r["custom" + (slot === "am" ? "Am" : "Pm")] ? `<button class="btn small" data-act="reset" data-slot="${slot}" style="justify-self:start">Back to template</button>` : ""}${picker(slot, r[slot])}</div></details></div>`;
@@ -793,6 +855,13 @@ document.addEventListener("click", e => {
   else if (act === "import-open") { state.sheet = { type: "import" }; render(); document.getElementById("imp-text")?.focus() }
   else if (act === "import-text") importText(document.getElementById("imp-text").value);
   else if (act === "backup") saveBackup();
+  else if (act === "addto-open") { state.addTo = state.addTo?.id === el.dataset.id ? null : addToDefaults(prod(el.dataset.id)); render() }
+  else if (act === "addto-cancel") { state.addTo = null; render() }
+  else if (act === "addto-slot") { state.addTo[el.dataset.slot] = !state.addTo[el.dataset.slot]; render() }
+  else if (act === "addto-day") { const a = state.addTo, d = el.dataset.d; a.days = d === "all" ? (a.days.length === 7 ? [] : [0, 1, 2, 3, 4, 5, 6]) : a.days.includes(+d) ? a.days.filter(x => x !== +d) : [...a.days, +d]; render() }
+  else if (act === "addto-save" || act === "addto-today") addToRoutine(act === "addto-today");
+  else if (act === "oneoff-open") { state.oneOff = { key: el.dataset.key, slot: el.dataset.slot }; render(); document.getElementById("oo-brand")?.focus() }
+  else if (act === "oneoff-cancel") { state.oneOff = null; document.activeElement?.blur(); render() }
   else if (act === "day-step") { const k = keyOf(addDays(fromKey(state.dayKey || todayKey()), +el.dataset.n)); state.dayKey = k === todayKey() ? null : k; render() }
   else if (act === "day-go") { state.dayKey = el.dataset.key === todayKey() ? null : el.dataset.key; state.tab = isMobile() ? "today" : "week"; render(); document.querySelector(".today")?.scrollIntoView({ block: "start", behavior: "smooth" }) }
   else if (act === "finish-ask") { state.finishAsk = el.dataset.id; render() }
@@ -824,10 +893,14 @@ document.addEventListener("change", e => {
   else if (act === "pick") {
     const s = state.sheet, slot = el.dataset.slot, id = el.dataset.id;
     if (s.type === "day") {
-      const r = routineFor(s.key), cur = r[slot], next = sortIds(el.checked ? [...cur, id] : cur.filter(x => x !== id));
-      const tplIds = sortIds(tplDay(fromKey(s.key).getDay())[slot] || []);
-      const day = { ...(state.days[s.key] || {}) };
-      if (sameList(next, tplIds)) delete day[slot]; else day[slot] = next;
+      const day = { ...(state.days[s.key] || {}) }, tplIds = sortIds(tplDay(fromKey(s.key).getDay())[slot] || []);
+      if (prod(id)?.oneOff) {
+        const ex = (day[slot + "Extra"] || []).filter(x => x !== id); if (el.checked) ex.push(id);
+        if (ex.length) day[slot + "Extra"] = ex; else delete day[slot + "Extra"];
+      } else {
+        const cur = sortIds(day[slot] ?? tplIds), next = sortIds(el.checked ? [...cur, id] : cur.filter(x => x !== id));
+        if (sameList(next, tplIds)) delete day[slot]; else day[slot] = next;
+      }
       saveDay(s.key, day);
     } else {
       const tpl = structuredClone(state.template); tpl.week = tpl.week || {};
@@ -857,6 +930,11 @@ document.addEventListener("submit", e => {
     p.brand = v("e-brand"); p.name = v("e-name") || p.name; delete p.short;
     p.kinds = Object.keys(KINDS).filter(k => document.getElementById("e-k-" + k).checked);
     state.editProd = null; document.activeElement?.blur(); saveTemplate(tpl); toast("Saved."); return;
+  }
+  if (e.target.id === "oneOffForm") {
+    e.preventDefault(); const f = e.target, v = id => document.getElementById(id).value.trim(); document.activeElement?.blur();
+    addOneOff(f.dataset.key, f.dataset.slot, { brand: v("oo-brand"), name: v("oo-name"), step: +v("oo-step"), kinds: Object.keys(KINDS).filter(k => document.getElementById("oo-k-" + k).checked) });
+    return;
   }
   if (e.target.id !== "addForm") return; e.preventDefault(); document.activeElement?.blur();
   const v = id => document.getElementById(id).value.trim();
@@ -937,8 +1015,10 @@ function buildTemplate(list) {
   return { products: prods, week };
 }
 function finishImport(tpl) {
+  tpl.products.push(...products().filter(p => p.oneOff && !tpl.products.some(x => x.id === p.id)));
   state.sheet = null; state.tab = isMobile() ? "today" : "week"; saveTemplate(tpl);
-  toast(`Imported ${tpl.products.length} product${tpl.products.length === 1 ? "" : "s"}. Check their steps on your shelf.`);
+  const n = tpl.products.filter(p => !p.oneOff).length;
+  toast(`Imported ${n} product${n === 1 ? "" : "s"}. Check their steps on your shelf.`);
 }
 function importText(text) {
   const tpl = parseRoutine(text || "");
@@ -969,8 +1049,10 @@ async function importFile(file) {
 }
 function addProduct(p) {
   const tpl = structuredClone(state.template || { products: [], week: {} });
-  tpl.products.push({ id: "p_" + Date.now().toString(36), name: p.name, brand: p.brand, step: p.step, kinds: p.kinds, ...(p.icon ? { icon: p.icon } : {}) });
-  saveTemplate(tpl); toast(`Added ${p.name} to your shelf. Plan it in under Routine.`);
+  const np = { id: "p_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name: p.name, brand: p.brand, step: p.step, kinds: p.kinds, ...(p.icon ? { icon: p.icon } : {}) };
+  tpl.products.push(np); state.addTo = addToDefaults(np);
+  saveTemplate(tpl); toast(`Added ${p.name} to your shelf. Choose when you use it below.`);
+  document.getElementById("prod-" + np.id)?.scrollIntoView({ block: "center", behavior: "smooth" });
 }
 
 /* ---------- boot ---------- */

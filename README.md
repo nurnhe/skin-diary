@@ -20,6 +20,8 @@ A weekly skincare calendar: plan morning and evening products for each day, tick
 - **Products:** your shelf with exact product names, a step for each product and an icon. You can add, edit and remove products. Warnings flag risky combinations, for example retinol and an acid in the same routine.
 - **Import my routine:** new diaries start empty. Paste a product list, or import an Excel or CSV spreadsheet (`routine-template.xlsx` is a ready-made template) or a Skin Diary routine file.
 - **Finished products:** mark a product as finished, then Repurchase or Won't repurchase. Your routine tags it (Rebuy or Replace), and for products you won't buy again the Shelf suggests alternatives you can add or swap into your weekly routine.
+- **Add to routine:** every shelf card shows where the product is used and has Add to routine (morning/evening, every day or chosen weekdays, or just today).
+- **One-off products:** add a sample or a product you're trying once to a single morning or evening. It's logged on that day only and stays off the shelf.
 - **How your skin responds:** your average skin rating on days with and without each product.
 
 ## Data
