@@ -385,7 +385,7 @@ const ALTERNATIVES = {
       { brand: "Skin1004", name: "Madagascar Centella Hyalu-Cica Water-Fit Sun Serum SPF50+", why: "Hydrating serum texture that suits dry skin.", kinds: ["spf"] },
       { brand: "Isntree", name: "Hyaluronic Acid Watery Sun Gel SPF50+ PA++++", why: "Light, moisturising gel that layers well." }]
 };
-const canFinish = p => p && p.brand && +p.step !== 9;
+const canFinish = p => p && p.brand && !isAction(p) && !p.oneOff;
 function finishBadge(p, link) {
   const f = p?.finished; if (!f) return "";
   if (f.verdict === "repurchase") return `<span class="mini ok fin-badge">Finished · repurchase</span>`;
@@ -411,7 +411,9 @@ const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": 
 const products = () => (state.template?.products || []);
 const prod = id => products().find(p => p.id === id);
 /* One-off products (a sample, a product tried once) live in the template so days can refer to them, but stay off the shelf. */
-const shelf = () => products().filter(p => !p.oneOff);
+/* Routine actions (water rinse, brush teeth) are steps, not products: they stay in the routine but off the shelf and out of the insights. */
+const isAction = p => !!p && (!!p.action || +p.step === 9 || !p.brand && /^(water rinse|rinse with water|rinse|brush(ing)? (your )?teeth|tooth ?brush(ing)?)$/i.test((p.name || "").trim()));
+const shelf = () => products().filter(p => !p.oneOff && !isAction(p));
 const sortIds = ids => [...new Set(ids)].filter(prod).sort((a, b) => rank(prod(a).step) - rank(prod(b).step));
 const sameList = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
 const dot = p => `<span class="dot" style="background:var(--s${p.step})" aria-hidden="true"></span>`;
@@ -477,7 +479,7 @@ function insights() {
     const rating = rs.reduce((a, b) => a + b, 0) / rs.length;
     const r = routineFor(key), used = new Set(), skipped = new Set();
     /* Brush teeth isn't skincare, so it stays out of the comparison. */
-    for (const s of ["am", "pm"]) r[s].filter(id => +prod(id)?.step !== 9 && !/brush(ing)? (your )?teeth|tooth ?brush/i.test(prod(id)?.name || "")).forEach(id => { const st = stepState(r, s, id); if (st) (st === "used" ? used : skipped).add(id) });
+    for (const s of ["am", "pm"]) r[s].filter(id => !isAction(prod(id))).forEach(id => { const st = stepState(r, s, id); if (st) (st === "used" ? used : skipped).add(id) });
     used.forEach(id => (stats[id] ??= { w: [], wo: [] }).w.push(rating));
     skipped.forEach(id => { if (!used.has(id)) (stats[id] ??= { w: [], wo: [] }).wo.push(rating) });
   }
@@ -612,7 +614,7 @@ function steps(key, r, slot, numbered) {
   if (!r[slot].length) return `<p class="muted" style="margin:0">Nothing planned.</p>`;
   return `<ol class="steps${numbered ? " numbered" : ""}">${r[slot].map(id => { const p = prod(id), st = stepState(r, slot, id); return `<li class="${st}"><label class="step">
     <input type="checkbox" data-act="use" data-key="${key}" data-slot="${slot}" data-id="${id}"${st === "used" ? " checked" : ""}>
-    ${thumb(p, 40)}<span class="txt"><span class="nm">${esc(p.name)}</span><span class="sub">${p.brand ? esc(p.brand) + " · " : ""}${STEPS[p.step]}${st === "skipped" ? " · skipped" : ""}</span>${p.oneOff ? `<span class="mini fin-badge">One-off</span>` : ""}${finishBadge(p, true)}</span></label>
+    ${thumb(p, 40)}<span class="txt"><span class="nm">${esc(p.name)}</span><span class="sub">${p.brand ? esc(p.brand) + " · " : ""}${STEPS[p.step] === p.name ? "Routine step" : STEPS[p.step]}${st === "skipped" ? " · skipped" : ""}</span>${p.oneOff ? `<span class="mini fin-badge">One-off</span>` : ""}${finishBadge(p, true)}</span></label>
     <button class="skip-btn" data-act="skip" data-key="${key}" data-slot="${slot}" data-id="${id}" aria-pressed="${st === "skipped"}">${st === "skipped" ? "Undo skip" : "Skip"}</button></li>` }).join("")}</ol>`;
 }
 function renderInsights() {
@@ -1017,7 +1019,7 @@ function buildTemplate(list) {
 function finishImport(tpl) {
   tpl.products.push(...products().filter(p => p.oneOff && !tpl.products.some(x => x.id === p.id)));
   state.sheet = null; state.tab = isMobile() ? "today" : "week"; saveTemplate(tpl);
-  const n = tpl.products.filter(p => !p.oneOff).length;
+  const n = tpl.products.filter(p => !p.oneOff && !isAction(p)).length;
   toast(`Imported ${n} product${n === 1 ? "" : "s"}. Check their steps on your shelf.`);
 }
 function importText(text) {
