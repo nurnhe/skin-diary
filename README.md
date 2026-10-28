@@ -22,6 +22,7 @@ A weekly skincare calendar: plan morning and evening products for each day, tick
 - **Finished products:** mark a product as finished, then Repurchase or Won't repurchase. Your routine tags it (Rebuy or Replace), and for products you won't buy again the Shelf suggests alternatives you can add or swap into your weekly routine.
 - **Add to routine:** every shelf card shows where the product is used and has Add to routine (morning/evening, every day or chosen weekdays, or just today).
 - **One-off products:** add a sample or a product you're trying once to a single morning or evening. It's logged on that day only and stays off the shelf.
+- **To buy:** Want to buy on alternatives and Picked for you, plus Repurchase, fill a To buy list on the Shelf. Bought it moves an item onto the shelf (or restocks a finished product).
 - **How your skin responds:** your average skin rating on days with and without each product.
 
 ## Data

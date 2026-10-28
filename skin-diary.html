@@ -702,19 +702,52 @@ function swapsFor(p) {
   const alts = alternativesFor(p), inRoutine = Object.values(state.template?.week || {}).some(d => [...(d.am || []), ...(d.pm || [])].includes(p.id));
   if (!alts.length) return `<div class="swaps"><span class="muted" style="font-size:13.5px">No suggestions for this step yet. Add the product you'd like to try below.</span></div>`;
   return `<div class="swaps"><span class="eyebrow">Try instead</span><div class="suggest">${alts.map((a, i) => `<div class="card">${thumb(a, 44)}<span class="eyebrow">${STEPS[a.step]} · ${esc(a.brand)}</span><b>${esc(a.name)}</b><span class="muted" style="font-size:13.5px">${esc(a.why)}</span>
-    <div class="btns">${inRoutine ? `<button class="btn small primary" data-act="swap" data-id="${p.id}" data-i="${i}">Swap into routine</button>` : ""}${a.owned ? `<span class="muted" style="font-size:13px;align-self:center">✓ On your shelf</span>` : `<button class="btn small" data-act="swap-add" data-id="${p.id}" data-i="${i}">Add to shelf</button>`}</div></div>`).join("")}</div></div>`;
+    <div class="btns">${inRoutine ? `<button class="btn small primary" data-act="swap" data-id="${p.id}" data-i="${i}">Swap into routine</button>` : ""}${a.owned ? `<span class="muted" style="font-size:13px;align-self:center">✓ On your shelf</span>` : `<button class="btn small" data-act="swap-add" data-id="${p.id}" data-i="${i}">Add to shelf</button>${buyBtn(a, `data-src="alt" data-id="${p.id}" data-i="${i}"`)}`}</div></div>`).join("")}</div></div>`;
+}
+/* To buy: products KK wants to get, kept in the template (so backups include it) as template.toBuy. */
+const toBuy = () => state.template?.toBuy || [];
+const buyKey = a => (a.brand + "|" + a.name).toLowerCase();
+const onBuyList = a => toBuy().some(x => buyKey(x) === buyKey(a));
+function buyBtn(a, attrs) {
+  return onBuyList(a) ? `<button class="btn small ghost" data-act="buy-toggle" ${attrs}>✓ On your to-buy list</button>` : `<button class="btn small" data-act="buy-toggle" ${attrs}>Want to buy</button>`;
+}
+function toggleBuy(a, extra = {}) {
+  const tpl = structuredClone(state.template || { products: [], week: {} }), list = tpl.toBuy || [];
+  const had = list.some(x => buyKey(x) === buyKey(a));
+  tpl.toBuy = had ? list.filter(x => buyKey(x) !== buyKey(a)) : [...list, { id: "b_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), brand: a.brand, name: a.name, step: a.step, kinds: a.kinds || [], ...(a.icon ? { icon: a.icon } : {}), addedOn: todayKey(), ...extra }];
+  saveTemplate(tpl); toast(had ? `Took ${a.name} off your to-buy list.` : `Added ${a.name} to your to-buy list on the Shelf.`);
+}
+function renderToBuy() {
+  const list = toBuy(); if (!list.length) return "";
+  return `<section class="glass panel" id="to-buy"><h2>To <em>buy</em></h2><div class="prod-list">${list.map(b => { const re = b.restock && prod(b.restock); return `<div class="prod-row buy-row">
+    ${thumb(b, 56)}<div style="min-width:0"><div class="br">${esc(b.brand)}</div><div class="nm">${esc(b.name)}</div><div class="in-routine" style="color:var(--muted)">${re ? "Restock" : STEPS[b.step]}</div></div>
+    <div class="acts"><button class="btn small primary" data-act="buy-done" data-id="${b.id}">Bought it</button><button class="btn small ghost" data-act="buy-remove" data-id="${b.id}">Remove</button></div></div>` }).join("")}</div></section>`;
+}
+function boughtIt(id) {
+  const tpl = structuredClone(state.template), b = (tpl.toBuy || []).find(x => x.id === id); if (!b) return;
+  tpl.toBuy = tpl.toBuy.filter(x => x.id !== id);
+  const re = b.restock && tpl.products.find(x => x.id === b.restock);
+  if (re) { delete re.finished; saveTemplate(tpl); toast(`Restocked ${re.name}. It's back in use.`); return }
+  const own = tpl.products.find(x => !x.oneOff && buyKey(x) === buyKey(b));
+  if (own) { saveTemplate(tpl); toast(`${b.name} is already on your shelf.`); return }
+  const np = newProduct(b); if (b.icon) np.icon = b.icon; tpl.products.push(np); state.addTo = addToDefaults(np);
+  saveTemplate(tpl); toast(`Added ${b.name} to your shelf. Choose when you use it below.`);
+  document.getElementById("prod-" + np.id)?.scrollIntoView({ block: "center", behavior: "smooth" });
 }
 function finishProduct(id, verdict) {
   const tpl = structuredClone(state.template), p = tpl.products.find(x => x.id === id);
   if (verdict) p.finished = { verdict, on: todayKey() }; else delete p.finished;
+  tpl.toBuy = (tpl.toBuy || []).filter(x => x.restock !== id);
+  if (verdict === "repurchase") tpl.toBuy.push({ id: "b_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), brand: p.brand, name: p.name, step: p.step, kinds: p.kinds || [], ...(p.icon ? { icon: p.icon } : {}), addedOn: todayKey(), restock: id });
   state.finishAsk = null; saveTemplate(tpl);
-  toast(!verdict ? `${p.name} is back in use.` : verdict === "repurchase" ? `Marked as finished. It's tagged in your routine to rebuy.` : `Marked as finished. Alternatives are below.`);
+  toast(!verdict ? `${p.name} is back in use.` : verdict === "repurchase" ? `Marked as finished and added to your to-buy list.` : `Marked as finished. Alternatives are below.`);
 }
 function newProduct(a) { return { id: "p_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name: a.name, brand: a.brand, step: a.step, kinds: a.kinds || [] } }
 function swapIn(id, i, swap) {
   const tpl = structuredClone(state.template), old = tpl.products.find(x => x.id === id), a = alternativesFor(old)[i]; if (!a) return;
   let np = a.owned ? tpl.products.find(x => x.id === a.owned.id) : null;
   if (!np) { np = newProduct(a); tpl.products.push(np) }
+  if (tpl.toBuy) tpl.toBuy = tpl.toBuy.filter(x => buyKey(x) !== buyKey(np));
   if (swap) for (const d of Object.values(tpl.week)) for (const s of ["am", "pm"]) if ((d[s] || []).includes(id)) d[s] = [...new Set(d[s].map(x => x === id ? np.id : x))];
   state.template = tpl; for (const d of Object.values(tpl.week)) for (const s of ["am", "pm"]) d[s] = sortIds(d[s] || []);
   saveTemplate(tpl);
@@ -740,10 +773,11 @@ function renderProducts() {
     ${state.iconPick === p.id ? `<div class="icon-grid" role="group" aria-label="Pick an icon">${Object.keys(ICONS).map(n => `<button data-act="icon-set" data-id="${p.id}" data-icon="${n}" title="${n.replace(/-/g, " ")}" aria-pressed="${iconOf(p) === n}" style="--c:var(--s${p.step})">${svgIcon(n)}</button>`).join("")}</div>` : ""}</div>`).join("");
   const owned = new Set(shelf().map(p => (p.brand + p.name).toLowerCase()));
   const sugg = SUGGESTIONS.map((s, i) => `<div class="card">${thumb(s, 44)}<span class="eyebrow">${STEPS[s.step]} · ${esc(s.brand)}</span><b>${esc(s.name)}</b><span class="muted" style="font-size:13.5px">${esc(s.why)}</span>
-    ${owned.has((s.brand + s.name).toLowerCase()) ? `<span class="muted" style="font-size:13px">✓ In your products</span>` : `<button class="btn small" data-act="add-sugg" data-i="${i}" style="justify-self:start">I bought this</button>`}</div>`).join("");
+    ${owned.has((s.brand + s.name).toLowerCase()) ? `<span class="muted" style="font-size:13px">✓ In your products</span>` : `<div class="btns" style="display:flex;flex-wrap:wrap;gap:6px"><button class="btn small" data-act="add-sugg" data-i="${i}">I bought this</button>${buyBtn(s, `data-src="sugg" data-i="${i}"`)}</div>`}</div>`).join("");
   return `<section class="glass panel"><h2>Your <em>shelf</em></h2>
       ${rows ? `<div class="prod-list">${rows}</div>` : `<p class="muted" style="margin:0">No products yet. Add your first one below.</p>`}
     </section>
+    ${renderToBuy()}
     <form class="glass panel" id="addForm"><h2>Add a <em>product</em></h2>
       <p class="muted" style="margin:-6px 0 0">Type the brand and the full name exactly as it's printed on the packaging.</p>
       <div class="add-form">
@@ -840,6 +874,9 @@ document.addEventListener("click", e => {
   else if (act === "import-open") { state.sheet = { type: "import" }; render(); document.getElementById("imp-text")?.focus() }
   else if (act === "import-text") importText(document.getElementById("imp-text").value);
   else if (act === "backup") saveBackup();
+  else if (act === "buy-toggle") { const a = el.dataset.src === "sugg" ? SUGGESTIONS[+el.dataset.i] : alternativesFor(prod(el.dataset.id))[+el.dataset.i]; if (a) toggleBuy(a, el.dataset.src === "alt" ? { replaces: el.dataset.id } : {}) }
+  else if (act === "buy-done") boughtIt(el.dataset.id);
+  else if (act === "buy-remove") { const tpl = structuredClone(state.template), b = (tpl.toBuy || []).find(x => x.id === el.dataset.id); tpl.toBuy = (tpl.toBuy || []).filter(x => x.id !== el.dataset.id); saveTemplate(tpl); if (b) toast(`Took ${b.name} off your to-buy list.`) }
   else if (act === "addto-open") { state.addTo = state.addTo?.id === el.dataset.id ? null : addToDefaults(prod(el.dataset.id)); render() }
   else if (act === "addto-cancel") { state.addTo = null; render() }
   else if (act === "addto-slot") { state.addTo[el.dataset.slot] = !state.addTo[el.dataset.slot]; render() }
@@ -1001,6 +1038,7 @@ function buildTemplate(list) {
 }
 function finishImport(tpl) {
   tpl.products.push(...products().filter(p => p.oneOff && !tpl.products.some(x => x.id === p.id)));
+  if (!tpl.toBuy && toBuy().length) tpl.toBuy = toBuy().filter(b => !b.restock);
   state.sheet = null; state.tab = isMobile() ? "today" : "week"; saveTemplate(tpl);
   const n = tpl.products.filter(p => !p.oneOff && !isAction(p)).length;
   toast(`Imported ${n} product${n === 1 ? "" : "s"}. Check their steps on your shelf.`);
@@ -1029,13 +1067,14 @@ async function importFile(file) {
   try {
     const data = JSON.parse(await file.text()), tpl = data?.template;
     if (!Array.isArray(tpl?.products) || typeof tpl.week !== "object") throw new Error("no routine");
-    finishImport({ products: tpl.products, week: tpl.week });
+    finishImport({ products: tpl.products, week: tpl.week, ...(Array.isArray(tpl.toBuy) ? { toBuy: tpl.toBuy } : {}) });
   } catch (e) { toast("That file doesn't have a Skin Diary routine in it.") }
 }
 function addProduct(p) {
   const tpl = structuredClone(state.template || { products: [], week: {} });
   const np = { id: "p_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name: p.name, brand: p.brand, step: p.step, kinds: p.kinds, ...(p.icon ? { icon: p.icon } : {}) };
   tpl.products.push(np); state.addTo = addToDefaults(np);
+  if (tpl.toBuy) tpl.toBuy = tpl.toBuy.filter(x => buyKey(x) !== buyKey(np));
   saveTemplate(tpl); toast(`Added ${p.name} to your shelf. Choose when you use it below.`);
   document.getElementById("prod-" + np.id)?.scrollIntoView({ block: "center", behavior: "smooth" });
 }
