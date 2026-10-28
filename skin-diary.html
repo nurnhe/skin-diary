@@ -98,6 +98,7 @@ nav.tabs button[aria-selected="true"] { background: var(--ink); color: var(--bg)
 .add-oneoff { justify-self: start; margin-top: 6px; color: var(--muted) }
 .oneoff-form { display: grid; gap: 8px; margin-top: 10px; padding: 12px; border-radius: 16px; background: color-mix(in srgb, var(--surface-solid) 70%, transparent); border: 1px solid var(--line) }
 .oneoff-form .eyebrow { letter-spacing: .06em; text-transform: none; font-size: 12px; font-weight: 400 }
+.link-add { display: grid; gap: 12px }
 .night-hint { flex-basis: 100%; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding: 12px 14px; border-radius: 16px; background: linear-gradient(140deg, var(--pm-1), var(--pm-2)); color: var(--pm-ink); font-size: 13.5px; font-weight: 400 }
 .today-intro .rating button { padding: 4px 11px; font-size: 13px }
 .today-note { margin: 0; font-family: var(--serif); font-style: italic; font-size: 17px; line-height: 1.3; overflow-wrap: anywhere }
@@ -680,6 +681,7 @@ function render() {
   const main = document.getElementById("main"), a = document.activeElement;
   if (main.contains(a) && a.matches("input:not([type=checkbox]):not([type=date]), textarea")) { renderSheet(); return }
   if (!state.tplLoaded) main.innerHTML = `<div class="glass empty-state"><p class="muted">Loading your routine…</p></div>`;
+  else if (state.linkAdd) main.innerHTML = renderAddLink();
   else if (tab === "today") main.innerHTML = state.template ? renderToday() + renderInsights() : emptyState();
   else if (tab === "week") main.innerHTML = state.template ? (isMobile() ? renderWeek() : renderToday() + renderWeek() + renderInsights()) : emptyState();
   else if (tab === "template") main.innerHTML = state.template ? renderTemplate() : emptyState();
@@ -1029,6 +1031,8 @@ document.addEventListener("click", e => {
   else if (act === "buy-remove") { const tpl = structuredClone(state.template), b = (tpl.toBuy || []).find(x => x.id === el.dataset.id); tpl.toBuy = (tpl.toBuy || []).filter(x => x.id !== el.dataset.id); saveTemplate(tpl); if (b) toast(`Took ${b.name} off your to-buy list.`) }
   else if (act === "addto-open") { state.addTo = state.addTo?.id === el.dataset.id ? null : addToDefaults(prod(el.dataset.id)); render() }
   else if (act === "addto-cancel") { state.addTo = null; render() }
+  else if (act === "link-add") applyAddLink();
+  else if (act === "link-skip") clearAddLink();
   else if (act === "addto-slot") { state.addTo[el.dataset.slot] = !state.addTo[el.dataset.slot]; render() }
   else if (act === "addto-day") { const a = state.addTo, d = el.dataset.d; a.days = d === "all" ? (a.days.length === 7 ? [] : [0, 1, 2, 3, 4, 5, 6]) : a.days.includes(+d) ? a.days.filter(x => x !== +d) : [...a.days, +d]; render() }
   else if (act === "addto-save" || act === "addto-today") addToRoutine(act === "addto-today");
@@ -1229,6 +1233,40 @@ async function importFile(file) {
     finishImport({ products: tpl.products, week: tpl.week, ...(Array.isArray(tpl.toBuy) ? { toBuy: tpl.toBuy } : {}) });
   } catch (e) { toast("That file doesn't have a Skin Diary routine in it.") }
 }
+/* Add-products link: #add=<base64url JSON {p:[[brand, name, step, kinds?]], s:"am"|"pm"}> adds them to the shelf and that slot every day, after the viewer confirms. */
+function readAddLink() {
+  const m = location.hash.match(/^#add=([A-Za-z0-9_-]+)/); if (!m) return null;
+  try {
+    const j = JSON.parse(decodeURIComponent(escape(atob(m[1].replace(/-/g, "+").replace(/_/g, "/")))));
+    const items = (j.p || []).map(([brand, name, step, kinds]) => ({ brand: String(brand || ""), name: String(name || ""), step: +step, kinds: Array.isArray(kinds) ? kinds : [] })).filter(p => p.name && STEPS[p.step]);
+    return items.length ? { items, slot: j.s === "am" ? "am" : "pm" } : null;
+  } catch (e) { return null }
+}
+function clearAddLink() { state.linkAdd = null; try { history.replaceState(null, "", location.pathname + location.search) } catch (e) {} render() }
+function renderAddLink() {
+  const l = state.linkAdd; if (!l || !state.tplLoaded) return "";
+  return `<div class="glass panel link-add"><span class="eyebrow">From a link</span><h2>Add to your <em>${l.slot === "am" ? "mornings" : "evenings"}</em></h2>
+    <div class="prod-list">${l.items.map(p => `<div class="prod-row">${thumb(p, 56)}<div style="min-width:0"><div class="br">${esc(p.brand)}</div><div class="nm">${esc(p.name)}</div><div class="in-routine" style="color:var(--muted)">${STEPS[p.step]}</div></div></div>`).join("")}</div>
+    <p class="muted" style="margin:0">These go on your shelf and into every ${l.slot === "am" ? "morning" : "evening"}, in step order.</p>
+    <div class="btns" style="display:flex;flex-wrap:wrap;gap:8px"><button class="btn primary" data-act="link-add">Add ${l.items.length === 1 ? "it" : "all " + l.items.length}</button><button class="btn ghost" data-act="link-skip">Not now</button></div></div>`;
+}
+function applyAddLink() {
+  const l = state.linkAdd; if (!l) return;
+  const tpl = structuredClone(state.template || { products: [], week: {} }), ids = [];
+  for (const p of l.items) {
+    let x = tpl.products.find(q => !q.oneOff && (q.brand + "|" + q.name).toLowerCase() === (p.brand + "|" + p.name).toLowerCase());
+    if (x) x.step = p.step; else { x = { id: "p_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), ...p, addedOn: todayKey() }; tpl.products.push(x) }
+    ids.push(x.id);
+    if (tpl.toBuy) tpl.toBuy = tpl.toBuy.filter(b => buyKey(b) !== buyKey(x));
+  }
+  const byId = new Map(tpl.products.map(p => [p.id, p]));
+  for (let d = 0; d < 7; d++) {
+    const day = tpl.week[d] = tpl.week[d] || { label: "", am: [], pm: [] };
+    day[l.slot] = [...new Set([...(day[l.slot] || []), ...ids])].filter(id => byId.has(id)).sort((a, b) => rank(byId.get(a).step) - rank(byId.get(b).step));
+  }
+  const n = l.items.length; clearAddLink(); saveTemplate(tpl);
+  toast(`Added ${n === 1 ? l.items[0].name : n + " products"} to every ${l.slot === "am" ? "morning" : "evening"}.`);
+}
 function addProduct(p) {
   const tpl = structuredClone(state.template || { products: [], week: {} });
   const np = { id: "p_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name: p.name, brand: p.brand, step: p.step, kinds: p.kinds, ...(p.icon ? { icon: p.icon } : {}) };
@@ -1239,6 +1277,8 @@ function addProduct(p) {
 }
 
 /* ---------- boot ---------- */
+state.linkAdd = readAddLink();
+addEventListener("hashchange", () => { state.linkAdd = readAddLink(); render() });
 document.querySelectorAll("[data-nav]").forEach(svg => { const n = svg.dataset.nav; svg.innerHTML = n === "products" ? ICONS.bottle.d : NAV_ICONS[n] });
 mobileMQ.addEventListener?.("change", () => { if (!isMobile() && state.tab === "today") state.tab = "week"; render() });
 render();
