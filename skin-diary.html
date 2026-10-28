@@ -88,6 +88,13 @@ nav.tabs button[aria-selected="true"] { background: var(--ink); color: var(--bg)
 .day-nav { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; flex-basis: 100% }
 .day-nav .btn:not(.primary) { min-width: 36px; min-height: 36px; font-size: 18px; line-height: 1; padding: 6px 12px }
 .date-pick { border: 1px solid var(--line); background: var(--surface-solid); color: var(--ink); border-radius: 999px; padding: 6px 12px; min-height: 36px; font: inherit; font-size: 13.5px; color-scheme: light dark }
+.ac-wrap { display: grid; gap: 8px; min-width: 0; align-self: start }
+.ac-list[hidden] { display: none }
+.ac-list { grid-column: 1 / -1; display: grid; gap: 2px; padding: 4px; border-radius: 16px; background: var(--surface-solid); border: 1px solid var(--line); box-shadow: var(--shadow) }
+.ac-item { display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 10px; align-items: center; text-align: left; padding: 6px 8px; border: 0; border-radius: 12px; background: transparent; color: var(--ink); font: inherit; cursor: pointer; min-height: 44px }
+.ac-item:hover, .ac-item:focus-visible { background: var(--accent-soft) }
+.ac-item .nm { display: block; font-weight: 500; font-size: 14px; overflow-wrap: anywhere }
+.ac-item .sub { display: block; font-size: 12px; color: var(--muted) }
 .add-oneoff { justify-self: start; margin-top: 6px; color: var(--muted) }
 .oneoff-form { display: grid; gap: 8px; margin-top: 10px; padding: 12px; border-radius: 16px; background: color-mix(in srgb, var(--surface-solid) 70%, transparent); border: 1px solid var(--line) }
 .oneoff-form .eyebrow { letter-spacing: .06em; text-transform: none; font-size: 12px; font-weight: 400 }
@@ -368,6 +375,145 @@ const ALTERNATIVES = {
       { brand: "Skin1004", name: "Madagascar Centella Hyalu-Cica Water-Fit Sun Serum SPF50+", why: "Hydrating serum texture that suits dry skin.", kinds: ["spf"] },
       { brand: "Isntree", name: "Hyaluronic Acid Watery Sun Gel SPF50+ PA++++", why: "Light, moisturising gel that layers well." }]
 };
+/* Autocomplete for the product forms: the viewer's own products first, then a small catalogue of common products.
+   Names follow the packaging; anything not listed can still be typed freely. Format: brand|exact name|step|kinds. */
+const CATALOGUE = `Banila Co|Clean It Zero Cleansing Balm Original|0
+Banila Co|Clean It Zero Cleansing Balm Nourishing|0
+Banila Co|Clean It Zero Cleansing Balm Purifying|0
+Heimish|All Clean Balm|0
+Ma:nyo|Pure Cleansing Oil|0
+DHC|Deep Cleansing Oil|0
+Kose|Softymo Speedy Cleansing Oil|0
+Clinique|Take The Day Off Cleansing Balm|0
+Elemis|Pro-Collagen Cleansing Balm|0
+Bioderma|Sensibio H2O Micellar Water|0
+Garnier|Micellar Cleansing Water|0
+CeraVe|Hydrating Cleanser|1
+CeraVe|Foaming Cleanser|1
+CeraVe|Hydrating Cream-to-Foam Cleanser|1
+La Roche-Posay|Toleriane Hydrating Gentle Cleanser|1
+La Roche-Posay|Effaclar Purifying Foaming Gel|1
+COSRX|Low pH Good Morning Gel Cleanser|1
+Cetaphil|Gentle Skin Cleanser|1
+Vanicream|Gentle Facial Cleanser|1
+Krave Beauty|Matcha Hemp Hydrating Cleanser|1
+Hada Labo|Gokujyun Cleansing Foam|1
+Isntree|Hyaluronic Acid Low pH Cleansing Foam|1
+Torriden|DIVE-IN Low Molecular Hyaluronic Acid Cleansing Foam|1
+Senka|Perfect Whip|1
+SKIN1004|Madagascar Centella Ampoule Foam|1
+Paula's Choice|Skin Perfecting 2% BHA Liquid Exfoliant|2|acid
+Paula's Choice|Skin Perfecting 8% AHA Gel Exfoliant|2|acid
+The Ordinary|Glycolic Acid 7% Exfoliating Toner|2|acid
+The Ordinary|Lactic Acid 5% + HA|2|acid
+The Ordinary|Lactic Acid 10% + HA|2|acid
+The Ordinary|AHA 30% + BHA 2% Peeling Solution|2|acid
+COSRX|AHA 7 Whitehead Power Liquid|2|acid
+COSRX|BHA Blackhead Power Liquid|2|acid
+Pixi|Glow Tonic|2|acid
+Some By Mi|AHA BHA PHA 30 Days Miracle Toner|2|acid
+Hada Labo|Gokujyun Premium Hydrating Lotion|3
+Hada Labo|Gokujyun Hyaluronic Acid Lotion|3
+Isntree|Hyaluronic Acid Toner|3
+Missha|Time Revolution The First Treatment Essence|3
+COSRX|Advanced Snail 96 Mucin Power Essence|3
+Klairs|Supple Preparation Facial Toner|3
+Klairs|Supple Preparation Unscented Toner|3
+Torriden|DIVE-IN Low Molecular Hyaluronic Acid Toner|3
+Laneige|Cream Skin Toner & Moisturizer|3
+SK-II|Facial Treatment Essence|3
+I'm From|Rice Toner|3
+Pyunkang Yul|Essence Toner|3
+Thayers|Alcohol-Free Rose Petal Witch Hazel Toner|3
+The Ordinary|Niacinamide 10% + Zinc 1%|4
+The Ordinary|Hyaluronic Acid 2% + B5|4
+The Ordinary|Alpha Arbutin 2% + HA|4
+The Ordinary|Ascorbyl Glucoside Solution 12%|4|vitc
+Beauty of Joseon|Glow Deep Serum: Rice + Alpha-Arbutin|4
+Beauty of Joseon|Light On Serum: Centella + Vita C|4|vitc
+Torriden|DIVE-IN Low Molecular Hyaluronic Acid Serum|4
+Good Molecules|Discoloration Correcting Serum|4
+Goodal|Green Tangerine Vita C Dark Spot Care Serum|4|vitc
+Klairs|Freshly Juiced Vitamin Drop|4|vitc
+COSRX|The Vitamin C 23 Serum|4|vitc
+SKIN1004|Madagascar Centella Ampoule|4
+Axis-Y|Dark Spot Correcting Glow Serum|4
+Paula's Choice|10% Niacinamide Booster|4
+La Roche-Posay|Hyalu B5 Serum|4
+Naturium|Niacinamide Serum 12% Plus Zinc 2%|4
+The Ordinary|Retinal 0.2% Emulsion|5|retinoid
+The Ordinary|Retinol 0.5% in Squalane|5|retinoid
+The Ordinary|Granactive Retinoid 2% Emulsion|5|retinoid
+La Roche-Posay|Retinol B3 Serum|5|retinoid
+Paula's Choice|Clinical 1% Retinol Treatment|5|retinoid
+CeraVe|Resurfacing Retinol Serum|5|retinoid
+Differin|Adapalene Gel 0.1%|5|retinoid
+Medik8|Crystal Retinal 6|5|retinoid
+Geek & Gorgeous|A-Game 5|5|retinoid
+CeraVe|Moisturising Cream|6
+CeraVe|PM Facial Moisturising Lotion|6
+La Roche-Posay|Toleriane Double Repair Moisturiser|6
+Illiyoon|Ceramide Ato Concentrate Cream|6
+Aestura|Atobarrier 365 Cream|6
+Etude|SoonJung 2x Barrier Intensive Cream|6
+Belif|The True Cream Aqua Bomb|6
+Belif|The True Cream Moisturizing Bomb|6
+Clinique|Dramatically Different Moisturizing Gel|6
+Neutrogena|Hydro Boost Water Gel|6
+Kiehl's|Ultra Facial Cream|6
+COSRX|Advanced Snail 92 All in One Cream|6
+Krave Beauty|Great Barrier Relief|6
+First Aid Beauty|Ultra Repair Cream|6
+Vanicream|Daily Facial Moisturizer|6
+Cetaphil|Moisturising Cream|6
+La Roche-Posay|Cicaplast Baume B5+|7
+Avène|Cicalfate+ Restorative Protective Cream|7
+Laneige|Water Sleeping Mask|7
+Aquaphor|Healing Ointment|7
+Vaseline|Original Petroleum Jelly|7
+COSRX|Ultimate Nourishing Rice Overnight Spa Mask|7
+Biodance|Bio-Collagen Real Deep Mask|7
+La Roche-Posay|Anthelios UVMune 400 Invisible Fluid SPF 50+|8|spf
+La Roche-Posay|Anthelios Hydrating Cream SPF 50+|8|spf
+SKIN1004|Madagascar Centella Hyalu-Cica Water-Fit Sun Serum SPF50+ PA++++|8|spf
+Isntree|Hyaluronic Acid Watery Sun Gel SPF50+ PA++++|8|spf
+Biore|UV Aqua Rich Watery Essence SPF50+ PA++++|8|spf
+Supergoop!|Unseen Sunscreen SPF 40|8|spf
+Ultra Violette|Supreme Screen SPF 50+|8|spf
+Bioderma|Photoderm Aquafluide SPF 50+|8|spf
+Eucerin|Sun Oil Control Gel-Cream SPF 50+|8|spf
+Altruist|Dermatologist Sunscreen SPF 50|8|spf
+Haruharu Wonder|Black Rice Moisture Airyfit Daily Sunscreen SPF50+|8|spf
+Purito|Daily Go-To Sunscreen SPF50+|8|spf`.split("\n").map(l => { const [brand, name, step, kinds] = l.split("|"); return { brand, name, step: +step, kinds: kinds ? kinds.split(",") : [] } });
+function acPool() {
+  const seen = new Set(), out = [];
+  const own = new Set(shelf().map(p => (p.brand + "|" + p.name).toLowerCase()));
+  for (const p of [...toBuy(), ...products().filter(x => x.oneOff), ...Object.values(ALTERNATIVES).flat().map(a => ({ ...a, step: +Object.keys(ALTERNATIVES).find(k => ALTERNATIVES[k].includes(a)) })), ...CATALOGUE]) {
+    const k = (p.brand + "|" + p.name).toLowerCase(); if (!p.name || seen.has(k) || own.has(k)) continue; seen.add(k); out.push({ brand: p.brand || "", name: p.name, step: +p.step, kinds: p.kinds || [], icon: p.icon });
+  }
+  return out;
+}
+function acMatches(q) {
+  const words = q.toLowerCase().split(/\s+/).filter(Boolean); if (!words.length || q.trim().length < 2) return [];
+  return acPool().map(p => { const hay = (p.brand + " " + p.name).toLowerCase(); if (!words.every(w => hay.includes(w))) return null;
+    return { p, score: (hay.startsWith(words[0]) ? 0 : 1) + (p.name.toLowerCase().startsWith(words[words.length - 1]) ? 0 : 1) } })
+    .filter(Boolean).sort((a, b) => a.score - b.score).slice(0, 6).map(x => x.p);
+}
+let acItems = [];
+function updateAutocomplete(pre) {
+  const list = document.getElementById(pre + "-ac"); if (!list) return;
+  const q = document.getElementById(pre + "-brand").value + " " + document.getElementById(pre + "-name").value;
+  acItems = acMatches(q);
+  list.hidden = !acItems.length;
+  list.innerHTML = acItems.map((p, i) => `<button type="button" class="ac-item" role="option" data-ac="${pre}" data-i="${i}">${thumb(p, 32)}<span class="txt"><span class="nm">${esc(p.name)}</span><span class="sub">${p.brand ? esc(p.brand) + " · " : ""}${STEPS[p.step]}</span></span></button>`).join("");
+}
+function pickAutocomplete(pre, i) {
+  const p = acItems[i]; if (!p) return;
+  document.getElementById(pre + "-brand").value = p.brand; document.getElementById(pre + "-name").value = p.name;
+  document.getElementById(pre + "-step").value = String(p.step);
+  for (const k of Object.keys(KINDS)) document.getElementById(pre + "-k-" + k).checked = p.kinds.includes(k);
+  document.getElementById(pre + "-ac").hidden = true; document.getElementById(pre + "-name").focus();
+}
 const canFinish = p => p && p.brand && !isAction(p) && !p.oneOff;
 function finishBadge(p, link) {
   const f = p?.finished; if (!f) return "";
@@ -579,8 +725,9 @@ function oneOffRow(key, slot) {
   const o = state.oneOff;
   if (!(o && o.key === key && o.slot === slot)) return `<button class="btn small ghost add-oneoff" data-act="oneoff-open" data-key="${key}" data-slot="${slot}">+ One-off product</button>`;
   return `<form class="oneoff-form" id="oneOffForm" data-key="${key}" data-slot="${slot}"><span class="eyebrow">A sample or something you're trying once. It's logged on this day only and stays off your shelf.</span>
-    <label class="field">Brand<input class="input" id="oo-brand" placeholder="e.g. Aestura"></label>
-    <label class="field">Exact product name<input class="input" id="oo-name" required placeholder="e.g. Atobarrier 365 Cream"></label>
+    <label class="field">Brand<input class="input" id="oo-brand" autocomplete="off" placeholder="e.g. Aestura"></label>
+    <label class="field">Exact product name<input class="input" id="oo-name" required autocomplete="off" placeholder="Start typing to see suggestions"></label>
+    <div class="ac-list" id="oo-ac" role="listbox" aria-label="Suggestions" hidden></div>
     <label class="field">Step<select class="input" id="oo-step">${STEP_LIST.map(([n, l]) => `<option value="${n}"${n === "6" ? " selected" : ""}>${l}</option>`).join("")}</select></label>
     <div class="kinds-row"><span class="muted">Contains:</span>${Object.entries(KINDS).map(([k, l]) => `<label><input type="checkbox" id="oo-k-${k}"> ${l}</label>`).join("")}</div>
     <div style="display:flex;gap:6px"><button class="btn small primary" type="submit">Add to ${slot === "am" ? "morning" : "evening"}</button><button class="btn small ghost" type="button" data-act="oneoff-cancel">Cancel</button></div></form>`;
@@ -781,8 +928,9 @@ function renderProducts() {
     <form class="glass panel" id="addForm"><h2>Add a <em>product</em></h2>
       <p class="muted" style="margin:-6px 0 0">Type the brand and the full name exactly as it's printed on the packaging.</p>
       <div class="add-form">
-        <label class="field">Brand<input class="input" id="f-brand" placeholder="e.g. La Roche-Posay"></label>
-        <label class="field" style="grid-column:span 2">Exact product name<input class="input" id="f-name" required placeholder="e.g. Anthelios UVMune 400 Invisible Fluid SPF 50+"></label>
+        <label class="field" style="align-self:start">Brand<input class="input" id="f-brand" autocomplete="off" placeholder="e.g. La Roche-Posay"></label>
+        <div class="ac-wrap" style="grid-column:span 2"><label class="field">Exact product name<input class="input" id="f-name" required autocomplete="off" placeholder="Start typing to see suggestions"></label>
+        <div class="ac-list" id="f-ac" role="listbox" aria-label="Suggestions" hidden></div></div>
         <label class="field">Step<select class="input" id="f-step">${STEP_LIST.map(([n, s]) => `<option value="${n}">${s}</option>`).join("")}</select></label>
       </div>
       <div class="kinds-row"><span class="muted">Contains:</span>${Object.entries(KINDS).map(([k, l]) => `<label><input type="checkbox" id="f-k-${k}" value="${k}"> ${l}</label>`).join("")}</div>
@@ -940,11 +1088,20 @@ function flushNote() {
 }
 document.addEventListener("input", e => {
   if (e.target.id === "imp-text" && state.sheet?.type === "import") state.sheet.text = e.target.value;
+  const ac = e.target.id?.match(/^(f|oo)-(brand|name)$/); if (ac) updateAutocomplete(ac[1]);
   if (e.target.id === "note") { clearTimeout(noteTimer); noteTimer = setTimeout(flushNote, 700) }
   if (e.target.id === "tpl-label") { clearTimeout(labelTimer); labelTimer = setTimeout(flushNote, 700) }
 });
 document.addEventListener("focusout", e => { if (e.target.id === "note" || e.target.id === "tpl-label") setTimeout(() => { flushNote(); renderSheet() }, 0) });
-document.addEventListener("keydown", e => { if (e.key === "Escape" && state.sheet) { flushNote(); state.sheet = null; render() } });
+document.addEventListener("keydown", e => {
+  const open = [...document.querySelectorAll(".ac-list")].find(l => !l.hidden);
+  if (e.key === "Escape" && open) { open.hidden = true; return }
+  if (e.key === "Escape" && state.sheet) { flushNote(); state.sheet = null; render() }
+});
+/* Pick a suggestion on pointerdown so the name field doesn't lose focus first; close the list when focus leaves the form. */
+document.addEventListener("pointerdown", e => { const b = e.target.closest("[data-ac]"); if (b) { e.preventDefault(); pickAutocomplete(b.dataset.ac, +b.dataset.i) } });
+document.addEventListener("click", e => { const b = e.target.closest("[data-ac]"); if (b && e.detail === 0) pickAutocomplete(b.dataset.ac, +b.dataset.i) });
+document.addEventListener("focusout", e => { const m = e.target.id?.match(/^(f|oo)-(brand|name)$/); if (m) setTimeout(() => { const a = document.activeElement; if (!a?.id?.match(/^(f|oo)-(brand|name)$/)) { const l = document.getElementById(m[1] + "-ac"); if (l) l.hidden = true } }, 150) });
 document.addEventListener("submit", e => {
   if (e.target.id === "editForm") {
     e.preventDefault();

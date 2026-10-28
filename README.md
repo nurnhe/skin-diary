@@ -23,6 +23,7 @@ A weekly skincare calendar: plan morning and evening products for each day, tick
 - **Add to routine:** every shelf card shows where the product is used and has Add to routine (morning/evening, every day or chosen weekdays, or just today).
 - **One-off products:** add a sample or a product you're trying once to a single morning or evening. It's logged on that day only and stays off the shelf.
 - **To buy:** Want to buy on alternatives and Picked for you, plus Repurchase, fill a To buy list on the Shelf. Bought it moves an item onto the shelf (or restocks a finished product).
+- **Name suggestions:** start typing a brand or product name in Add a product or a one-off and pick from a built-in list of about 110 popular products (plus your To buy list). Picking fills the brand, exact name, step and SPF/actives. Everything runs offline; nothing is sent anywhere.
 - **How your skin responds:** your average skin rating on days with and without each product.
 
 ## Data
