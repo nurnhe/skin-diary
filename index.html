@@ -16,7 +16,7 @@
 </head>
 <body>
 <title>Skin Diary</title>
-<script>/* Apply the saved colour scheme before first paint. */ try { const t = localStorage.getItem("skin-diary-theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t } catch (e) {}</script>
+<script>/* Apply the saved colour scheme before first paint. "nurnhe-theme" is shared by all of KK's apps on this site. */ try { const t = localStorage.getItem("nurnhe-theme") || localStorage.getItem("skin-diary-theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t } catch (e) {}</script>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Outfit:wght@300;400;500;600&display=swap">
@@ -1307,15 +1307,24 @@ function addProduct(p) {
   document.getElementById("prod-" + np.id)?.scrollIntoView({ block: "center", behavior: "smooth" });
 }
 
-/* Colour scheme: auto follows the device; light or dark is saved on this device. */
-function themePref() { try { const t = localStorage.getItem("skin-diary-theme"); return t === "light" || t === "dark" ? t : "auto" } catch (e) { return "auto" } }
+/* Colour scheme: auto follows the device; light or dark is saved on this device under "nurnhe-theme",
+   one key shared with the other apps on nurnhe.github.io so switching in one switches them all. */
+const THEME_KEY = "nurnhe-theme";
+function themePref() {
+  try {
+    let t = localStorage.getItem(THEME_KEY);
+    if (!t) { const old = localStorage.getItem("skin-diary-theme"); if (old) { t = old; localStorage.setItem(THEME_KEY, old); localStorage.removeItem("skin-diary-theme") } }
+    return t === "light" || t === "dark" ? t : "auto";
+  } catch (e) { return "auto" }
+}
 function applyTheme(t) {
   if (t === "auto") delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = t;
   document.querySelectorAll("[data-act=theme]").forEach(b => b.setAttribute("aria-pressed", b.dataset.theme === t));
   const dark = t === "dark" || t === "auto" && matchMedia("(prefers-color-scheme: dark)").matches;
   document.querySelectorAll('meta[name="theme-color"]').forEach(m => { m.content = dark ? "#17111C" : "#FBF4F7"; m.removeAttribute("media") });
 }
-function setTheme(t) { try { t === "auto" ? localStorage.removeItem("skin-diary-theme") : localStorage.setItem("skin-diary-theme", t) } catch (e) {} applyTheme(t) }
+function setTheme(t) { try { localStorage.setItem(THEME_KEY, t) } catch (e) {} applyTheme(t) }
+addEventListener("storage", e => { if (e.key === THEME_KEY) applyTheme(themePref()) });
 applyTheme(themePref());
 matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", () => applyTheme(themePref()));
 /* ---------- boot ---------- */
