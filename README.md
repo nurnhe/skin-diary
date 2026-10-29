@@ -26,6 +26,7 @@ A weekly skincare calendar: plan morning and evening products for each day, tick
 - **Name suggestions:** start typing a brand or product name in Add a product or a one-off and pick from a built-in list of about 110 popular products (plus your To buy list). Picking fills the brand, exact name, step and SPF/actives. Everything runs offline; nothing is sent anywhere.
 - **Lips and Feet & body steps:** two steps that come last in the evening (lips, then feet & body). They are logged like any other step but kept out of the face skin insights.
 - **Add-products link:** a link ending in `#add=…` shows the products it carries and, after you tap Add, puts them on your shelf and into every morning or evening in step order. Nothing changes until you confirm.
+- **Colour scheme:** Auto (follows your device), Light or Dark, switched at the top of the page and remembered on this device.
 - **How your skin responds:** your average skin rating on days with and without each product.
 
 ## Data
