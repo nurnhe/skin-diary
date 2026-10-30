@@ -27,7 +27,7 @@ A weekly skincare calendar: plan morning and evening products for each day, tick
 - **Lips and Feet & body steps:** two steps that come last in the evening (lips, then feet & body). They are logged like any other step but kept out of the face skin insights.
 - **Add-products link:** a link ending in `#add=…` shows the products it carries and, after you tap Add, puts them on your shelf and into every morning or evening in step order. Nothing changes until you confirm.
 - **Colour scheme:** Auto (follows your device), Light or Dark, switched at the top of the page. The choice is saved on this device under `nurnhe-theme`, a setting shared with the other apps on nurnhe.github.io, so switching in one switches them all.
-- **How your skin responds:** your average skin rating on days with and without each product.
+- **Skin tab:** your average skin score and the states you felt most often over the last 30 days, a 14-day strip, and a card per face product comparing days with and without it (lips and feet & body steps are left out).
 
 ## Data
 

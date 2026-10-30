@@ -61,7 +61,7 @@ body { min-height: 100%; color: var(--ink); font: 300 15px/1.55 var(--sans);
   .brand h1 { font-size: 40px }
   .brand .eyebrow { display: none }
   .wrap { padding-block: 16px calc(96px + env(safe-area-inset-bottom, 0px)); gap: 18px }
-  .bottom-nav { display: grid; grid-template-columns: repeat(4, 1fr); position: fixed; left: 0; right: 0; bottom: 0; z-index: 15;
+  .bottom-nav { display: grid; grid-template-columns: repeat(5, 1fr); position: fixed; left: 0; right: 0; bottom: 0; z-index: 15;
     padding: 6px max(8px, env(safe-area-inset-left, 0px)) calc(6px + env(safe-area-inset-bottom, 0px)) max(8px, env(safe-area-inset-right, 0px));
     background: var(--surface); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); border-top: 1px solid var(--line) }
   .bottom-nav button { border: 0; background: none; display: grid; justify-items: center; gap: 2px; padding: 6px 0; font-size: 11.5px; font-weight: 500; color: var(--muted); border-radius: 14px; -webkit-tap-highlight-color: transparent }
@@ -167,16 +167,35 @@ details summary:hover { color: var(--ink) }
 .tick { font-size: 11px; color: var(--ok); font-weight: 600 }
 .tick.skip { color: var(--warn) }
 .slot li.skipped > span:nth-child(2) { text-decoration: line-through; color: var(--muted) }
-.ins { display: grid; gap: 6px }
-.ins-row { display: grid; grid-template-columns: minmax(130px, 1fr) minmax(0, 1.4fr) minmax(0, 1.4fr); gap: 8px 18px; align-items: center; padding: 10px 14px; border-radius: 16px; background: var(--surface-solid); border: 1px solid var(--line) }
-.ins-name { display: flex; gap: 8px; align-items: center; font-weight: 500 }
-.ins-col { display: grid; grid-template-columns: 58px minmax(60px, 1fr) auto; gap: 10px; align-items: center; font-size: 13px; font-variant-numeric: tabular-nums }
+.sk-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px }
+.sk-stat { display: grid; gap: 4px; align-content: start; padding: 14px 16px; border-radius: 18px; background: var(--surface-solid); border: 1px solid var(--line) }
+.sk-stat b { font-family: var(--serif, "Instrument Serif", serif); font-weight: 400; font-size: 34px; line-height: 1 }
+.sk-stat b small { font-size: 16px; color: var(--muted) }
+.sk-chips { display: flex; flex-wrap: wrap; gap: 4px; padding-top: 4px }
+.sk-strip-wrap { display: grid; gap: 8px }
+.sk-strip { display: grid; grid-template-columns: repeat(14, minmax(0, 1fr)); gap: 4px; height: 64px; align-items: end; max-width: 560px }
+.sk-day { height: 100%; display: flex; align-items: end; border-radius: 8px; background: color-mix(in srgb, var(--line) 45%, transparent) }
+.sk-day > span { width: 100%; border-radius: 8px }
+.sk-day.hi > span { background: var(--ok) }
+.sk-day.mid > span { background: color-mix(in srgb, var(--ok) 40%, var(--line)) }
+.sk-day.lo > span { background: var(--warn) }
+.sk-day.none > span { background: var(--line) }
+.sk-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px }
+.sk-card { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 12px; padding: 14px; border-radius: 18px; background: var(--surface-solid); border: 1px solid var(--line) }
+.sk-body { display: grid; gap: 8px; min-width: 0 }
+.sk-head { display: flex; justify-content: space-between; align-items: start; gap: 8px; flex-wrap: wrap }
+.sk-head .br { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted) }
+.sk-head .nm { font-weight: 500; overflow-wrap: anywhere }
+.sk-bar { display: grid; grid-template-columns: 54px minmax(0, 1fr) auto; gap: 10px; align-items: center; font-size: 13px; font-variant-numeric: tabular-nums }
+.sk-lab { color: var(--muted); font-size: 12px }
+.sk-wait summary { cursor: pointer; color: var(--muted); font-size: 13.5px }
+.sk-wait ul { margin: 8px 0 0; padding-left: 18px; display: grid; gap: 4px; font-size: 13.5px }
+@media (max-width: 600px) { .sk-stats { grid-template-columns: 1fr 1fr } .sk-stats .sk-stat:last-child { grid-column: 1 / -1 } .sk-cards { grid-template-columns: 1fr } }
 .bar { height: 8px; border-radius: 999px; background: var(--line); overflow: hidden }
 .bar span { display: block; height: 100%; border-radius: 999px }
 .bar.with span { background: var(--ok) }
 .bar.without span { background: var(--muted) }
 .val { white-space: nowrap }
-@media (max-width: 700px) { .ins-row { grid-template-columns: minmax(0, 1fr) } }
 .done-btn { border: 1px solid var(--line); background: var(--surface-solid); border-radius: 999px; padding: 5px 12px; font-size: 13px; font-weight: 500; display: inline-flex; gap: 6px; align-items: center }
 .done-btn[aria-pressed="true"] { background: var(--ok); border-color: var(--ok); color: #fff }
 
@@ -329,6 +348,7 @@ button.mini { font: inherit; font-size: 11.5px; cursor: pointer }
       <button role="tab" data-act="tab" data-tab="week" aria-selected="true">Calendar</button>
       <button role="tab" data-act="tab" data-tab="template" aria-selected="false">Weekly template</button>
       <button role="tab" data-act="tab" data-tab="products" aria-selected="false">Products</button>
+      <button role="tab" data-act="tab" data-tab="skin" aria-selected="false">Skin</button>
     </nav>
     </div>
   </header>
@@ -340,6 +360,7 @@ button.mini { font: inherit; font-size: 11.5px; cursor: pointer }
   <button data-act="tab" data-tab="week"><svg viewBox="0 0 24 24" aria-hidden="true" data-nav="week"></svg><span>Week</span></button>
   <button data-act="tab" data-tab="template"><svg viewBox="0 0 24 24" aria-hidden="true" data-nav="template"></svg><span>Routine</span></button>
   <button data-act="tab" data-tab="products"><svg viewBox="0 0 48 48" aria-hidden="true" data-nav="products"></svg><span>Shelf</span></button>
+  <button data-act="tab" data-tab="skin"><svg viewBox="0 0 24 24" aria-hidden="true" data-nav="skin"></svg><span>Skin</span></button>
 </nav>
 <div id="sheetRoot"></div>
 <div class="toast" id="toast" hidden></div>
@@ -585,7 +606,8 @@ const STEP_ICON = { 0: "cream", 9: "tooth", 1: "tube", 2: "flask", 3: "bottle", 
 const NAV_ICONS = {
   today: '<path d="M12 12m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"/><path d="M3 12h1m8 -9v1m8 8h1m-9 8v1m-6.4 -15.4l.7 .7m12.1 -.7l-.7 .7m0 11.4l.7 .7m-12.1 -.7l-.7 .7"/>',
   week: '<path d="M4 7a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12z"/><path d="M16 3v4"/><path d="M8 3v4"/><path d="M4 11h16"/><path d="M8 14v4"/><path d="M12 14v4"/><path d="M16 14v4"/>',
-  template: '<path d="M4 12v-3a3 3 0 0 1 3 -3h13m-3 -3l3 3l-3 3"/><path d="M20 12v3a3 3 0 0 1 -3 3h-13m3 3l-3 -3l3 -3"/>'
+  template: '<path d="M4 12v-3a3 3 0 0 1 3 -3h13m-3 -3l3 3l-3 3"/><path d="M20 12v3a3 3 0 0 1 -3 3h-13m3 3l-3 -3l3 -3"/>',
+  skin: '<path d="M4 19h16"/><path d="M4 15l4 -6l4 3l4 -6l4 4"/>'
 };
 const mobileMQ = window.matchMedia("(max-width: 700px)");
 const isMobile = () => mobileMQ.matches;
@@ -712,8 +734,9 @@ function render() {
   if (main.contains(a) && a.matches("input:not([type=checkbox]):not([type=date]), textarea")) { renderSheet(); return }
   if (!state.tplLoaded) main.innerHTML = `<div class="glass empty-state"><p class="muted">Loading your routine…</p></div>`;
   else if (state.linkAdd) main.innerHTML = renderAddLink();
-  else if (tab === "today") main.innerHTML = state.template ? renderToday() + renderInsights() : emptyState();
-  else if (tab === "week") main.innerHTML = state.template ? (isMobile() ? renderWeek() : renderToday() + renderWeek() + renderInsights()) : emptyState();
+  else if (tab === "today") main.innerHTML = state.template ? renderToday() : emptyState();
+  else if (tab === "week") main.innerHTML = state.template ? (isMobile() ? renderWeek() : renderToday() + renderWeek()) : emptyState();
+  else if (tab === "skin") main.innerHTML = state.template ? renderSkin() : emptyState();
   else if (tab === "template") main.innerHTML = state.template ? renderTemplate() : emptyState();
   else main.innerHTML = renderProducts();
   renderSheet();
@@ -781,17 +804,41 @@ function steps(key, r, slot, numbered) {
     ${thumb(p, 40)}<span class="txt"><span class="nm">${esc(p.name)}</span><span class="sub">${p.brand ? esc(p.brand) + " · " : ""}${STEPS[p.step] === p.name ? "Routine step" : STEPS[p.step]}${st === "skipped" ? " · skipped" : ""}</span>${p.oneOff ? `<span class="mini fin-badge">One-off</span>` : ""}${finishBadge(p, true)}</span></label>
     <button class="skip-btn" data-act="skip" data-key="${key}" data-slot="${slot}" data-id="${id}" aria-pressed="${st === "skipped"}">${st === "skipped" ? "Undo skip" : "Skip"}</button></li>` }).join("")}</ol>`;
 }
-function renderInsights() {
-  const st = insights(), ids = sortIds(Object.keys(st)).filter(id => st[id].w.length && st[id].wo.length);
-  const avg = a => a.reduce((x, y) => x + y, 0) / a.length;
-  const bar = (a, cls) => a.length ? `<div class="bar ${cls}"><span style="width:${avg(a) / 5 * 100}%"></span></div><span class="val">${avg(a).toFixed(1)} <span class="muted">· ${a.length} ${a.length > 1 ? "days" : "day"}</span></span>` : `<div class="bar"></div><span class="val muted">No days yet</span>`;
-  const rows = ids.map(id => { const p = prod(id), s = st[id]; return `<div class="ins-row">
-    <div class="ins-name">${thumb(p, 32)}<span>${esc(p.name)}</span></div>
-    <div class="ins-col"><span class="eyebrow">With</span>${bar(s.w, "with")}</div>
-    <div class="ins-col"><span class="eyebrow">Without</span>${bar(s.wo, "without")}</div></div>` }).join("");
-  return `<section class="glass panel"><div style="display:grid;gap:4px"><h2>How your skin <em>responds</em></h2>
-    <p class="muted" style="margin:0;max-width:62ch">Average skin score on days you used each product and days you skipped it. Each skin state counts from 1 (irritated) to 5 (glowing), and the morning and evening are averaged for each day.</p></div>
-    ${rows ? `<div class="ins">${rows}</div>` : `<p style="margin:0">Nothing to compare yet. Tick the steps you use and rate your skin each day. A product shows up here once you have rated days both with it and without it.</p>`}</section>`;
+/* Skin tab: how the skin has felt lately and how each face product lines up with it (KK asked 2026-10-30 to move this off Today). */
+const avgOf = a => a.reduce((x, y) => x + y, 0) / a.length;
+const skinWord = n => n >= 4.5 ? "Glowing" : n >= 3.75 ? "Good" : n >= 2.75 ? "Okay" : n >= 1.75 ? "Dry or tight" : "Irritated";
+function renderSkin() {
+  const rated = Object.keys(state.days).filter(k => dayRatings(state.days[k]).length).sort();
+  if (!rated.length) return `<section class="glass panel"><h2>Your <em>skin</em></h2>
+    <p class="muted" style="margin:0;max-width:60ch">Pick how your skin feels after your morning and evening routines on the Today screen. After a few days you'll see how it's been and which products line up with your better days.</p></section>`;
+  const score = k => avgOf(dayRatings(state.days[k]));
+  const tk = todayKey(), since = keyOf(addDays(fromKey(tk), -29)), recent = rated.filter(k => k >= since);
+  const counts = {};
+  for (const k of recent) for (const sl of ["am", "pm"]) for (const id of skinOf(state.days[k], sl)) counts[id] = (counts[id] || 0) + 1;
+  const top = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 3);
+  const avg = recent.length ? avgOf(recent.map(score)) : null;
+  const strip = Array.from({ length: 14 }, (_, i) => { const k = keyOf(addDays(fromKey(tk), i - 13)), has = dayRatings(state.days[k] || {}).length, v = has ? score(k) : 0;
+    return `<span class="sk-day${has ? (v >= 3.75 ? " hi" : v >= 2.75 ? " mid" : " lo") : " none"}" title="${esc(fromKey(k).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" }))}${has ? " · " + v.toFixed(1) : " · not rated"}"><span style="height:${has ? Math.max(12, v / 5 * 100) : 6}%"></span></span>` }).join("");
+  const overview = `<section class="glass panel"><h2>Your <em>skin</em></h2>
+    <div class="sk-stats">
+      <div class="sk-stat"><span class="eyebrow">Last 30 days</span><b>${avg != null ? avg.toFixed(1) : "–"}<small> / 5</small></b><span class="muted">${avg != null ? skinWord(avg) : "No rated days"}</span></div>
+      <div class="sk-stat"><span class="eyebrow">Days rated</span><b>${recent.length}</b><span class="muted">${rated.length > recent.length ? rated.length + " in total" : "in the last 30 days"}</span></div>
+      <div class="sk-stat"><span class="eyebrow">Felt most often</span><div class="sk-chips">${top.length ? top.map(([id, n]) => `<span class="mini">${SKIN_BY_ID[id].label} · ${n}</span>`).join("") : `<span class="muted">–</span>`}</div></div>
+    </div>
+    <div class="sk-strip-wrap"><span class="eyebrow">Last 14 days</span><div class="sk-strip" role="img" aria-label="Skin score for each of the last 14 days">${strip}</div></div></section>`;
+  const st = insights(), all = sortIds(Object.keys(st));
+  const ready = all.filter(id => st[id].w.length && st[id].wo.length).map(id => ({ id, d: avgOf(st[id].w) - avgOf(st[id].wo) })).sort((a, b) => Math.abs(b.d) - Math.abs(a.d));
+  const waiting = all.filter(id => !(st[id].w.length && st[id].wo.length));
+  const bar = (a, cls, label) => `<div class="sk-bar"><span class="sk-lab">${label}</span><div class="bar ${cls}"><span style="width:${avgOf(a) / 5 * 100}%"></span></div><span class="sk-val">${avgOf(a).toFixed(1)}<span class="muted"> · ${a.length} ${a.length > 1 ? "days" : "day"}</span></span></div>`;
+  const cards = ready.map(({ id, d }) => { const p = prod(id), s = st[id];
+    const chip = d >= 0.3 ? `<span class="mini ok">Better days with it</span>` : d <= -0.3 ? `<span class="mini warn">Better days without it</span>` : `<span class="mini">No clear difference</span>`;
+    return `<div class="sk-card">${thumb(p, 44)}<div class="sk-body"><div class="sk-head"><div style="min-width:0"><div class="br">${esc(p.brand || STEPS[p.step])}</div><div class="nm">${esc(p.name)}</div></div>${chip}</div>
+      ${bar(s.w, "with", "With")}${bar(s.wo, "without", "Without")}</div></div>` }).join("");
+  const products = `<section class="glass panel"><div style="display:grid;gap:4px"><h2>Products and your <em>skin</em></h2>
+    <p class="muted" style="margin:0;max-width:62ch">Your average skin score on days you used each face product compared with days you skipped it, from 1 (irritated) to 5 (glowing).</p></div>
+    ${cards ? `<div class="sk-cards">${cards}</div>` : `<p style="margin:0">Nothing to compare yet. A product shows up here once you have rated days both with it and without it.</p>`}
+    ${waiting.length ? `<details class="sk-wait"><summary>${waiting.length} ${waiting.length > 1 ? "products need" : "product needs"} more days</summary><ul>${waiting.map(id => `<li>${esc(prod(id).name)} <span class="muted">· ${st[id].w.length ? "rated only on days you used it" : "rated only on days you skipped it"}</span></li>`).join("")}</ul></details>` : ""}</section>`;
+  return overview + products;
 }
 function slotList(slot, ids, done, custom, r) {
   const items = ids.length ? `<ol>${ids.map(id => { const p = prod(id), st = r ? stepState(r, slot, id) : ""; return `<li class="${st}"><span class="mini-icon" style="--c:var(--s${p.step})">${svgIcon(iconOf(p))}</span><span>${esc(p.name)}${p.oneOff ? ` <span class="mini">One-off</span>` : ""}${p.finished ? ` <span class="mini ${p.finished.verdict === "repurchase" ? "ok" : "warn"}">${p.finished.verdict === "repurchase" ? "Rebuy" : "Replace"}</span>` : ""}</span>${st === "used" ? `<span class="tick" aria-label="used">✓</span>` : st === "skipped" ? `<span class="tick skip" aria-label="skipped">–</span>` : ""}</li>` }).join("")}</ol>` : `<div class="empty">Nothing planned</div>`;
