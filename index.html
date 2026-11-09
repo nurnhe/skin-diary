@@ -782,12 +782,15 @@ const thumb = (p, size = 40) => `<span class="thumb icon" style="width:${size}px
 function tplDay(dow) { return state.template?.week?.[dow] || { am: [], pm: [], label: "" } }
 /* Steps that repeat every few days instead of on fixed weekdays (KK asked 2026-11-09: wash hair every third morning).
    A product with every = { n, from, start, slot } shows up every n days counted from "from", never before "start".
-   Hair products marked withWash come along on hair-wash days. */
+   Hair products marked withWash come along on hair-wash days: true = every wash, "turns" = products that take turns,
+   one per wash in the order they were added (KK asked 2026-11-09: two shampoos used in turns). */
+const turnsList = () => products().filter(x => x.withWash === "turns").sort((a, b) => (a.turnAt || 0) - (b.turnAt || 0));
+function turnFor(e, key) { const t = turnsList(); if (!t.length) return null; const i = Math.floor(dayDiff(e.from, key) / e.n); return t[((i % t.length) + t.length) % t.length] }
 const dayDiff = (a, b) => Math.round((fromKey(b) - fromKey(a)) / 864e5);
 const repeatsHit = (e, key) => !!e?.n && key >= (e.start || e.from) && ((dayDiff(e.from, key) % e.n) + e.n) % e.n === 0;
 function repeatsOn(key) {
   const out = { am: [], pm: [] };
-  for (const p of products()) if (repeatsHit(p.every, key)) { const sl = p.every.slot || "am"; out[sl].push(p.id); if (isWash(p)) out[sl].push(...products().filter(x => x.withWash).map(x => x.id)) }
+  for (const p of products()) if (repeatsHit(p.every, key)) { const sl = p.every.slot || "am"; out[sl].push(p.id); if (isWash(p)) { out[sl].push(...products().filter(x => x.withWash === true).map(x => x.id)); const t = turnFor(p.every, key); if (t) out[sl].push(t.id) } }
   return out;
 }
 const planBase = (key, slot) => sortIds([...(tplDay(fromKey(key).getDay())[slot] || []), ...repeatsOn(key)[slot]]);
@@ -1110,7 +1113,7 @@ function renderTemplate() {
 function routineSummary(p) {
   const wk = state.template?.week || {}, order = [1, 2, 3, 4, 5, 6, 0], short = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const part = (slot, word) => { const ds = order.filter(d => (wk[d]?.[slot] || []).includes(p.id)); return !ds.length ? "" : ds.length === 7 ? `Every ${word}` : `${ds.map(d => short[d]).join(", ")} ${word}s` };
-  const parts = [part("am", "morning"), part("pm", "evening"), p.every?.n ? `Every ${p.every.n} days in the ${p.every.slot === "pm" ? "evening" : "morning"}` : "", p.withWash ? "On hair-wash days" : ""].filter(Boolean);
+  const parts = [part("am", "morning"), part("pm", "evening"), p.every?.n ? `Every ${p.every.n} days in the ${p.every.slot === "pm" ? "evening" : "morning"}` : "", p.withWash === "turns" ? "Hair-wash days, taking turns" : p.withWash ? "Every hair-wash day" : ""].filter(Boolean);
   return parts.length ? `In your routine · ${parts.join(" · ")}` : `<span class="muted">Not in your routine yet</span>`;
 }
 function addToDefaults(p) {
@@ -1124,7 +1127,7 @@ function addToPanel(p) {
     <div class="rating"><button data-act="addto-slot" data-slot="am" aria-pressed="${a.am}">Morning</button><button data-act="addto-slot" data-slot="pm" aria-pressed="${a.pm}">Evening</button></div>
     <span class="eyebrow">Which days?</span>
     <div class="rating"><button data-act="addto-day" data-d="all" aria-pressed="${a.days.length === 7}">Every day</button>${order.map(d => `<button data-act="addto-day" data-d="${d}" aria-pressed="${a.days.includes(d)}">${short[d]}</button>`).join("")}</div>
-    ${isHair(p) && products().some(isWash) ? `<button class="btn small" data-act="addto-wash" aria-pressed="${!!p.withWash}" style="justify-self:start">${p.withWash ? "✓ On hair-wash days" : "On hair-wash days instead"}</button>` : ""}
+    ${isHair(p) && products().some(isWash) ? `<span class="eyebrow">Or on hair-wash mornings</span><div class="rating"><button data-act="addto-wash" data-mode="every" aria-pressed="${p.withWash === true}">Every wash</button><button data-act="addto-wash" data-mode="turns" aria-pressed="${p.withWash === "turns"}">Take turns with other ${/conditioner/i.test(p.name) ? "conditioners" : /mask/i.test(p.name) ? "masks" : "shampoos"}</button></div>` : ""}
     <div class="btns"><button class="btn small primary" data-act="addto-save"${(!a.am && !a.pm) || !a.days.length ? " disabled" : ""}>Add to routine</button><button class="btn small" data-act="addto-today"${!a.am && !a.pm ? " disabled" : ""}>Just today</button><button class="btn small ghost" data-act="addto-cancel">Cancel</button></div></div>`;
 }
 function addToRoutine(today) {
@@ -1218,7 +1221,7 @@ function washCard() {
     <button class="btn small primary" data-act="wash-add">Add every 3 days</button></div>`;
   const e = w.every, next = Array.from({ length: e.n }, (_, i) => keyOf(addDays(new Date(), i))).find(k => repeatsHit(e, k)), nd = next && dayDiff(tk, next);
   return `<div class="wash-card on"><span class="thumb icon" style="width:48px;height:48px;--c:var(--s12)" aria-hidden="true">${svgIcon(iconOf(w))}</span>
-    <div style="min-width:0"><b>Wash hair</b><span class="muted">Every ${e.n} days in the morning · next ${nd === 0 ? "today" : nd === 1 ? "tomorrow" : fromKey(next).toLocaleDateString(undefined, { weekday: "long" })}</span></div>
+    <div style="min-width:0"><b>Wash hair</b><span class="muted">Every ${e.n} days in the morning · next ${nd === 0 ? "today" : nd === 1 ? "tomorrow" : fromKey(next).toLocaleDateString(undefined, { weekday: "long" })}${next && turnFor(e, next) ? ` with ${esc(turnFor(e, next).name)}` : ""}</span></div>
     <div class="wash-opts"><span class="eyebrow">Every</span><div class="rating">${[2, 3, 4, 5].map(n => `<button data-act="wash-n" data-n="${n}" aria-pressed="${e.n === n}">${n} days</button>`).join("")}</div>
       <span class="eyebrow">Next wash</span><div class="rating">${["Today", "Tomorrow", "In 2 days"].slice(0, Math.min(3, e.n)).map((l, i) => `<button data-act="wash-next" data-d="${i}" aria-pressed="${nd === i}">${l}</button>`).join("")}</div>
       <button class="btn small ghost" data-act="wash-remove" style="justify-self:start;color:var(--warn)">Take Wash hair out of my routine</button></div></div>`;
@@ -1362,7 +1365,13 @@ document.addEventListener("click", e => {
   else if (act === "shelf-filter") { state.shelfFilter = el.dataset.f; render() }
   else if (act === "stars") { const tpl = structuredClone(state.template), p = tpl.products.find(x => x.id === el.dataset.id), n = +el.dataset.n; if (p.stars === n) delete p.stars; else p.stars = n; buzz(8); saveTemplate(tpl) }
   else if (act === "buy-self") { const p = prod(el.dataset.id); if (p) toggleBuy(p) }
-  else if (act === "addto-wash") { const tpl = structuredClone(state.template), p = tpl.products.find(x => x.id === state.addTo.id); p.withWash = !p.withWash; if (!p.withWash) delete p.withWash; state.addTo = null; saveTemplate(tpl); toast(p.withWash ? `${p.name} now comes up on your hair-wash mornings.` : `${p.name} no longer comes up on hair-wash days.`) }
+  else if (act === "addto-wash") {
+    const tpl = structuredClone(state.template), p = tpl.products.find(x => x.id === state.addTo.id), mode = el.dataset.mode === "turns" ? "turns" : true;
+    if (p.withWash === mode) { delete p.withWash; delete p.turnAt } else { p.withWash = mode; if (mode === "turns") p.turnAt = Date.now(); else delete p.turnAt }
+    state.addTo = null; saveTemplate(tpl);
+    const n = turnsList().length;
+    toast(!p.withWash ? `${p.name} no longer comes up on hair-wash days.` : mode === "turns" ? (n > 1 ? `${p.name} now takes turns with ${n - 1} other product${n > 2 ? "s" : ""} on hair-wash mornings.` : `${p.name} will take turns. Set your other shampoo to Take turns too.`) : `${p.name} now comes up on every hair-wash morning.`);
+  }
   else if (act === "wash-add") { const tpl = structuredClone(state.template || { products: [], week: {} }), tk = todayKey(); tpl.products.push({ id: "p_washhair", name: "Wash hair", brand: "", step: 12, action: true, icon: "drop", kinds: [], every: { n: 3, from: tk, start: tk, slot: "am" } }); saveTemplate(tpl); toast("Added Wash hair every 3 days in the morning, starting today. Tap a hair product to bring it along on those days.") }
   else if (act === "wash-n" || act === "wash-next") {
     const tpl = structuredClone(state.template), w = tpl.products.find(isWash), e = w.every, tk = todayKey();
@@ -1370,7 +1379,7 @@ document.addEventListener("click", e => {
     if (act === "wash-n") e.n = +el.dataset.n;
     e.from = next; e.start = e.start && e.start < tk ? e.start : tk; saveTemplate(tpl);
   }
-  else if (act === "wash-remove") { const tpl = structuredClone(state.template); tpl.products = tpl.products.filter(p => !isWash(p)); tpl.products.forEach(p => delete p.withWash); saveTemplate(tpl); toast("Took Wash hair out of your routine.") }
+  else if (act === "wash-remove") { const tpl = structuredClone(state.template); tpl.products = tpl.products.filter(p => !isWash(p)); tpl.products.forEach(p => { delete p.withWash; delete p.turnAt }); saveTemplate(tpl); toast("Took Wash hair out of your routine.") }
   else if (act === "done-all") toggleAll(el.dataset.key, el.dataset.slot);
   else if (act === "skip") toggleSkip(el.dataset.key, el.dataset.slot, el.dataset.id);
   else if (act === "reset") { const s = state.sheet, day = { ...(state.days[s.key] || {}) }; delete day[el.dataset.slot]; saveDay(s.key, day) }
