@@ -12,22 +12,24 @@ A weekly skincare calendar: plan morning and evening products for each day, tick
 
 ## Features
 
-- **Phone layout:** a bottom tab bar with Today, Week, Routine and Shelf.
-- **Today:** numbered morning and evening steps with a checkbox and a Skip button for each step. A day is marked completed once every step is ticked or skipped.
-- **Other days:** arrows and a date picker on Today open any day to log it. Yesterday stays open for logging, and after midnight a hint offers to log last night's evening routine.
+- **Phone layout:** a bottom tab bar with Today, Week, Routine, Shelf and Skin. On phones every panel (a day, a product, Add a product) slides up from the bottom.
+- **Today:** on phones a Morning / Evening switch opens on the routine for right now (morning before 2 pm). Tap a step to tick it, swipe it left to skip it. When every step is ticked or skipped, a done card shows how many of the last 7 mornings or evenings you did.
+- **Other days:** a week strip on Today (swipe it or use the arrows for other weeks) and a date picker open any day to log it. Dots under each day show a logged morning and evening. Yesterday stays open for logging, and after midnight a hint offers to log last night's evening routine.
 - **Week view:** seven day cards that fill in from a repeating weekly template. Any single day can be edited.
 - **Weekly template:** a default routine for each weekday, for example retinol nights, an exfoliation night and recovery nights.
-- **Products:** your shelf with exact product names, a step for each product and an icon. You can add, edit and remove products. Warnings flag risky combinations, for example retinol and an acid in the same routine.
+- **Products:** your shelf as a grid of tiles with filters (All, In routine, Hair, To buy, Finished), exact product names, a step for each product and an icon. Tap a tile to rate it (1 to 5 stars, also after you finish it), add it to your routine, edit, change its icon or remove it. Warnings flag risky combinations, for example retinol and an acid in the same routine.
 - **Import my routine:** new diaries start empty. Paste a product list, or import an Excel or CSV spreadsheet (`routine-template.xlsx` is a ready-made template) or a Skin Diary routine file.
 - **Finished products:** mark a product as finished, then Repurchase or Won't repurchase. Your routine tags it (Rebuy or Replace), and for products you won't buy again the Shelf suggests alternatives you can add or swap into your weekly routine.
 - **Add to routine:** every shelf card shows where the product is used and has Add to routine (morning/evening, every day or chosen weekdays, or just today).
 - **One-off products:** add a sample or a product you're trying once to a single morning or evening. It's logged on that day only and stays off the shelf.
 - **To buy:** Want to buy on alternatives and Picked for you, plus Repurchase, fill a To buy list on the Shelf. Bought it moves an item onto the shelf (or restocks a finished product).
 - **Name suggestions:** start typing a brand or product name in Add a product or a one-off and pick from a built-in list of about 110 popular products (plus your To buy list). Picking fills the brand, exact name, step and SPF/actives. Everything runs offline; nothing is sent anywhere.
+- **Hair:** a Hair step and section on the Shelf, plus Wash hair, a morning step that repeats every 2 to 5 days. Hair products can come along on hair-wash days. Hair is left out of the face skin insights.
 - **Lips and Feet & body steps:** two steps that come last in the evening (lips, then feet & body). They are logged like any other step but kept out of the face skin insights.
 - **Add-products link:** a link ending in `#add=…` shows the products it carries and, after you tap Add, puts them on your shelf and into every morning or evening in step order. Nothing changes until you confirm.
 - **Colour scheme:** Auto (follows your device), Light or Dark, switched at the top of the page. The choice is saved on this device under `nurnhe-theme`, a setting shared with the other apps on nurnhe.github.io, so switching in one switches them all.
-- **Skin tab:** your average skin score and the states you felt most often over the last 30 days, a 14-day strip, and a card per face product comparing days with and without it (lips and feet & body steps are left out).
+- **Skin tab:** a month calendar coloured by how your skin felt each day (tap a day to open it), tiles with the month's average, days rated, the states you felt most often and the product your best days line up with, and a card per face product comparing days with and without it (lips, feet & body and hair are left out).
+- **Time of day:** the background glow and phone status bar turn warm in the morning and cool after 2 pm.
 
 ## Data
 
