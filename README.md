@@ -20,6 +20,7 @@ A weekly skincare calendar: plan morning and evening products for each day, tick
 - **Products:** your shelf as a grid of tiles with filters (All, In routine, Hair, To buy, Finished), exact product names, a step for each product and an icon. Tap a tile to rate it (1 to 5 stars, also after you finish it), add it to your routine, edit, change its icon or remove it. Warnings flag risky combinations, for example retinol and an acid in the same routine.
 - **Import my routine:** new diaries start empty. Paste a product list, or import an Excel or CSV spreadsheet (`routine-template.xlsx` is a ready-made template) or a Skin Diary routine file.
 - **Finished products:** mark a product as finished, then Repurchase or Won't repurchase. Your routine tags it (Rebuy or Replace), and for products you won't buy again the Shelf suggests alternatives you can add or swap into your weekly routine.
+- **Your own order:** hold the dotted handle on a step and drag it to reorder the morning or evening routine. The order is kept for every day.
 - **Add to routine:** every product shows where it is used and has Add to routine (morning/evening, every day, chosen weekdays, every few days, or just today).
 - **One-off products:** add a sample or a product you're trying once to a single morning or evening. It's logged on that day only and stays off the shelf.
 - **To buy:** Want to buy on alternatives and Picked for you, plus Repurchase, fill a To buy list on the Shelf. Bought it moves an item onto the shelf (or restocks a finished product).
@@ -27,7 +28,7 @@ A weekly skincare calendar: plan morning and evening products for each day, tick
 - **Hair:** a Hair step and section on the Shelf, including Wash hair as a step. Hair is left out of the face skin insights.
 - **Every few days:** Add to routine can repeat a product or step every 2 to 8 days from a chosen start day, for example Wash hair every 3 days, or two shampoos each every 6 days, 3 days apart.
 - **Lips and Feet & body steps:** two steps that come last in the evening (lips, then feet & body). They are logged like any other step but kept out of the face skin insights.
-- **Add-products link:** a link ending in `#add=…` shows the products it carries and, after you tap Add, puts them on your shelf and into every morning or evening in step order. Nothing changes until you confirm.
+- **Add-products link:** a link ending in `#add=…` shows the products it carries and, after you tap Add, puts them on your shelf and into every morning or evening in step order. An item can also carry a repeat (every n days from a date). Nothing changes until you confirm.
 - **Colour scheme:** Auto (follows your device), Light or Dark, switched at the top of the page. The choice is saved on this device under `nurnhe-theme`, a setting shared with the other apps on nurnhe.github.io, so switching in one switches them all.
 - **Skin tab:** a month calendar coloured by how your skin felt each day (tap a day to open it), tiles with the month's average, days rated, the states you felt most often and the product your best days line up with, and a card per face product comparing days with and without it (lips, feet & body and hair are left out).
 - **Time of day:** the background glow and phone status bar turn warm in the morning and cool after 2 pm.

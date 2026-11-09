@@ -256,6 +256,12 @@ details summary:hover { color: var(--ink) }
 .week7 i { width: 18px; height: 6px; border-radius: 9px; background: var(--ok) }
 .week7 i.no { background: color-mix(in srgb, var(--muted) 30%, transparent) }
 .done-steps summary { font-size: 13px }
+.grip { width: 22px; height: 36px; display: grid; place-items: center; align-self: center; cursor: grab; touch-action: none; color: color-mix(in srgb, var(--muted) 75%, transparent) }
+.grip svg { width: 10px; height: 16px; fill: currentColor; pointer-events: none }
+.step:has(.grip) { grid-template-columns: 22px 40px minmax(0, 1fr) 22px }
+.steps li.lifted { z-index: 5; position: relative }
+.steps li.lifted .step { box-shadow: var(--shadow-lg); background: var(--surface-solid); transition: none }
+.steps li.lifted .skip-btn { visibility: hidden }
 .done-steps[open] summary { margin-bottom: 6px }
 @media (prefers-reduced-motion: no-preference) {
   .done-card.pop .done-tick { animation: pop .45s cubic-bezier(.2, .8, .2, 1.4) } @keyframes pop { from { transform: scale(.4); opacity: 0 } }
@@ -274,7 +280,7 @@ details summary:hover { color: var(--ink) }
   .steps li, .steps.numbered li { position: relative; grid-template-columns: minmax(0, 1fr); gap: 0 }
   .steps li::before { display: none }
   .steps li.skipped { grid-template-columns: minmax(0, 1fr) auto; gap: 6px }
-  .step { position: relative; z-index: 1; grid-template-columns: 22px 40px minmax(0, 1fr); background: var(--row); padding: 8px 10px; border-radius: 14px; touch-action: pan-y; transition: transform .2s cubic-bezier(.2, .8, .2, 1) }
+  .step, .step:has(.grip) { position: relative; z-index: 1; background: var(--row); padding: 8px 10px; border-radius: 14px; touch-action: pan-y; transition: transform .2s cubic-bezier(.2, .8, .2, 1) }
   .step:hover { background: var(--row) }
   .step .thumb { width: 40px !important; height: 40px !important }
   .step .nm { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-weight: 400; line-height: 1.3 }
@@ -803,10 +809,25 @@ function migrateWash(tpl) {
   }
   return changed;
 }
+/* Custom step order, set by dragging a step's handle (KK asked 2026-11-09). template.order = { am: [ids], pm: [ids] }.
+   Products not in the saved order slot in by step order, just before the first saved product of a later step. */
+function orderSort(ids, slot) {
+  const ord = state.template?.order?.[slot]; if (!ord?.length) return ids;
+  const pos = new Map(ord.map((id, i) => [id, i]));
+  const key = id => { if (pos.has(id)) return pos.get(id); const rk = rank(prod(id)?.step), i = ord.findIndex(x => prod(x) && rank(prod(x).step) > rk); return (i < 0 ? ord.length : i) - 0.5 };
+  return ids.map((id, i) => [id, key(id), i]).sort((a, b) => a[1] - b[1] || a[2] - b[2]).map(x => x[0]);
+}
+function saveOrder(slot, ids) {
+  const tpl = structuredClone(state.template), old = tpl.order?.[slot] || [], next = [...ids];
+  /* Keep where the other products (used on other days) sat, right after the product they followed before. */
+  old.forEach((x, i) => { if (next.includes(x)) return; const prev = old.slice(0, i).reverse().find(y => next.includes(y)); next.splice(prev ? next.indexOf(prev) + 1 : 0, 0, x) });
+  tpl.order = { ...(tpl.order || {}), [slot]: next.filter(id => tpl.products.some(p => p.id === id)) };
+  saveTemplate(tpl);
+}
 const planBase = (key, slot) => sortIds([...(tplDay(fromKey(key).getDay())[slot] || []), ...repeatsOn(key)[slot]]);
 function routineFor(key) {
   const t = tplDay(fromKey(key).getDay()), d = state.days[key] || {};
-  const r = { key, am: sortIds([...(d.am ?? planBase(key, "am")), ...(d.amExtra || [])]), pm: sortIds([...(d.pm ?? planBase(key, "pm")), ...(d.pmExtra || [])]), customAm: Array.isArray(d.am), customPm: Array.isArray(d.pm), label: t.label || "", day: d };
+  const r = { key, am: orderSort(sortIds([...(d.am ?? planBase(key, "am")), ...(d.amExtra || [])]), "am"), pm: orderSort(sortIds([...(d.pm ?? planBase(key, "pm")), ...(d.pmExtra || [])]), "pm"), customAm: Array.isArray(d.am), customPm: Array.isArray(d.pm), label: t.label || "", day: d };
   for (const s of ["am", "pm"]) {
     const u = d[s + "Used"];
     r[s + "Logged"] = Array.isArray(u) || !!d[s + "Done"];
@@ -1012,9 +1033,9 @@ function addOneOff(key, slot, p) {
 }
 function steps(key, r, slot, numbered) {
   if (!r[slot].length) return `<p class="muted" style="margin:0">Nothing planned.</p>`;
-  return `<ol class="steps${numbered ? " numbered" : ""}">${r[slot].map(id => { const p = prod(id), st = stepState(r, slot, id); return `<li class="${st}"><label class="step">
+  return `<ol class="steps${numbered ? " numbered" : ""}" data-slot="${slot}">${r[slot].map(id => { const p = prod(id), st = stepState(r, slot, id); return `<li class="${st}" data-id="${id}"><label class="step">
     <input type="checkbox" data-act="use" data-key="${key}" data-slot="${slot}" data-id="${id}"${st === "used" ? " checked" : ""}>
-    ${thumb(p, 40)}<span class="txt">${p.brand ? `<span class="br">${esc(p.brand)}</span>` : ""}<span class="nm">${esc(p.name)}</span><span class="sub">${STEPS[p.step] === p.name ? "Routine step" : STEPS[p.step]}${st === "skipped" ? " · skipped" : ""}</span>${p.oneOff ? `<span class="mini fin-badge">One-off</span>` : ""}${finishBadge(p, true)}</span></label>
+    ${thumb(p, 40)}<span class="txt">${p.brand ? `<span class="br">${esc(p.brand)}</span>` : ""}<span class="nm">${esc(p.name)}</span><span class="sub">${STEPS[p.step] === p.name ? "Routine step" : STEPS[p.step]}${st === "skipped" ? " · skipped" : ""}</span>${p.oneOff ? `<span class="mini fin-badge">One-off</span>` : ""}${finishBadge(p, true)}</span>${r[slot].length > 1 ? `<span class="grip" title="Drag to reorder" aria-hidden="true"><svg viewBox="0 0 10 16"><circle cx="2.5" cy="3" r="1.4"/><circle cx="7.5" cy="3" r="1.4"/><circle cx="2.5" cy="8" r="1.4"/><circle cx="7.5" cy="8" r="1.4"/><circle cx="2.5" cy="13" r="1.4"/><circle cx="7.5" cy="13" r="1.4"/></svg></span>` : ""}</label>
     <button class="skip-btn" data-act="skip" data-key="${key}" data-slot="${slot}" data-id="${id}" aria-pressed="${st === "skipped"}">${st === "skipped" ? "Undo skip" : "Skip"}</button></li>` }).join("")}</ol>`;
 }
 /* Skin tab: how the skin has felt lately and how each face product lines up with it (KK asked 2026-10-30 to move this off Today). */
@@ -1110,7 +1131,7 @@ function renderWeek() {
 function renderTemplate() {
   const order = [1, 2, 3, 4, 5, 6, 0];
   const cards = order.map(dow => {
-    const t = tplDay(dow), am = sortIds(t.am || []), pm = sortIds(t.pm || []);
+    const t = tplDay(dow), am = orderSort(sortIds(t.am || []), "am"), pm = orderSort(sortIds(t.pm || []), "pm");
     return `<button class="glass day" data-act="open-tpl" data-dow="${dow}" aria-label="Edit ${DOW[dow]} template">
       <div class="day-head"><h3>${DOW[dow]}</h3></div>
       ${t.label ? `<span class="tag">${esc(t.label)}</span>` : ""}
@@ -1458,6 +1479,7 @@ document.addEventListener("change", e => {
 let drag = null;
 document.addEventListener("pointerdown", e => {
   if (!isMobile() || e.button) return;
+  if (e.target.closest(".grip")) return;
   const row = e.target.closest(".steps li:not(.skipped) .step"), strip = e.target.closest(".wk-strip");
   if (!row && !strip) return;
   document.querySelectorAll(".steps li.reveal").forEach(li => { if (!li.contains(e.target)) li.classList.remove("reveal") });
@@ -1484,6 +1506,31 @@ document.addEventListener("pointercancel", () => { if (drag?.row) { drag.row.sty
 /* A swipe ends with a click on the row underneath; don't let it tick the step. */
 let dragEnd = null;
 document.addEventListener("click", e => { if (dragEnd && Date.now() - dragEnd.at < 350 && dragEnd.el.contains(e.target)) { e.preventDefault(); e.stopPropagation() } dragEnd = null }, true);
+/* Drag a step by its handle to reorder the routine. The row follows the finger and the list reorders live. */
+let lift = null;
+document.addEventListener("pointerdown", e => {
+  const g = e.target.closest(".grip"); if (!g || e.button) return;
+  e.preventDefault();
+  const li = g.closest("li"), ol = li.closest("ol"), r = li.getBoundingClientRect();
+  lift = { li, ol, grab: e.clientY - r.top, start: [...ol.children].map(x => x.dataset.id).join() };
+  li.classList.add("lifted"); buzz(10);
+});
+document.addEventListener("pointermove", e => {
+  if (!lift) return; e.preventDefault();
+  const { li, ol } = lift, y = e.clientY; li.style.transform = "";
+  const before = [...ol.children].filter(x => x !== li).find(x => { const r = x.getBoundingClientRect(); return y < r.top + r.height / 2 });
+  if (before !== li.nextElementSibling) ol.insertBefore(li, before || null);
+  li.style.transform = `translateY(${y - lift.grab - li.getBoundingClientRect().top}px)`;
+}, { passive: false });
+function dropLift() {
+  if (!lift) return; const { li, ol, start } = lift; lift = null;
+  li.classList.remove("lifted"); li.style.transform = "";
+  dragEnd = { at: Date.now(), el: li };
+  const ids = [...ol.children].map(x => x.dataset.id);
+  if (ids.join() !== start) { buzz(8); saveOrder(ol.dataset.slot, ids) }
+}
+document.addEventListener("pointerup", dropLift);
+document.addEventListener("pointercancel", dropLift);
 let noteTimer = null, labelTimer = null;
 function flushNote() {
   const n = document.getElementById("note"), s = state.sheet;
@@ -1637,7 +1684,9 @@ function readAddLink() {
   const m = location.hash.match(/^#add=([A-Za-z0-9_-]+)/); if (!m) return null;
   try {
     const j = JSON.parse(decodeURIComponent(escape(atob(m[1].replace(/-/g, "+").replace(/_/g, "/")))));
-    const items = (j.p || []).map(([brand, name, step, kinds]) => ({ brand: String(brand || ""), name: String(name || ""), step: +step, kinds: Array.isArray(kinds) ? kinds : [] })).filter(p => p.name && STEPS[p.step]);
+    /* An item may carry a repeat rule as a fifth field: { n, from: "YYYY-MM-DD" } (every n days from that date). */
+    const items = (j.p || []).map(([brand, name, step, kinds, ev]) => ({ brand: String(brand || ""), name: String(name || ""), step: +step, kinds: Array.isArray(kinds) ? kinds : [],
+      ...(ev && +ev.n >= 2 && /^\d{4}-\d{2}-\d{2}$/.test(ev.from) ? { every: { n: +ev.n, from: ev.from } } : {}) })).filter(p => p.name && STEPS[p.step]);
     return items.length ? { items, slot: j.s === "am" ? "am" : "pm" } : null;
   } catch (e) { return null }
 }
@@ -1645,8 +1694,8 @@ function clearAddLink() { state.linkAdd = null; try { history.replaceState(null,
 function renderAddLink() {
   const l = state.linkAdd; if (!l || !state.tplLoaded) return "";
   return `<div class="glass panel link-add"><span class="eyebrow">From a link</span><h2>Add to your <em>${l.slot === "am" ? "mornings" : "evenings"}</em></h2>
-    <div class="prod-list">${l.items.map(p => `<div class="prod-row">${thumb(p, 56)}<div style="min-width:0"><div class="br">${esc(p.brand)}</div><div class="nm">${esc(p.name)}</div><div class="in-routine" style="color:var(--muted)">${STEPS[p.step]}</div></div></div>`).join("")}</div>
-    <p class="muted" style="margin:0">These go on your shelf and into every ${l.slot === "am" ? "morning" : "evening"}, in step order.</p>
+    <div class="prod-list">${l.items.map(p => `<div class="prod-row">${thumb(p, 56)}<div style="min-width:0"><div class="br">${esc(p.brand)}</div><div class="nm">${esc(p.name)}</div><div class="in-routine" style="color:var(--muted)">${p.every ? `Every ${p.every.n} days from ${esc(fromKey(p.every.from).toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" }))}` : STEPS[p.step]}</div></div></div>`).join("")}</div>
+    <p class="muted" style="margin:0">${l.items.every(p => p.every) ? `These go on your shelf and into your ${l.slot === "am" ? "mornings" : "evenings"} on the days shown.` : `These go on your shelf and into every ${l.slot === "am" ? "morning" : "evening"}${l.items.some(p => p.every) ? " (or the days shown)" : ""}, in step order.`}</p>
     <div class="btns" style="display:flex;flex-wrap:wrap;gap:8px"><button class="btn primary" data-act="link-add">Add ${l.items.length === 1 ? "it" : "all " + l.items.length}</button><button class="btn ghost" data-act="link-skip">Not now</button></div></div>`;
 }
 function applyAddLink() {
@@ -1654,7 +1703,9 @@ function applyAddLink() {
   const tpl = structuredClone(state.template || { products: [], week: {} }), ids = [];
   for (const p of l.items) {
     let x = tpl.products.find(q => !q.oneOff && (q.brand + "|" + q.name).toLowerCase() === (p.brand + "|" + p.name).toLowerCase());
-    if (x) x.step = p.step; else { x = { id: "p_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), ...p, addedOn: todayKey() }; tpl.products.push(x) }
+    const { every, ...base } = p, step = !p.brand && /^wash hair$/i.test(p.name) ? { action: true, icon: "drop" } : {};
+    if (x) x.step = p.step; else { x = { id: "p_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), ...base, ...step, addedOn: todayKey() }; tpl.products.push(x) }
+    if (every) { x.every = { n: every.n, from: every.from, start: todayKey(), slots: [l.slot] }; continue }
     ids.push(x.id);
     if (tpl.toBuy) tpl.toBuy = tpl.toBuy.filter(b => buyKey(b) !== buyKey(x));
   }
@@ -1664,7 +1715,7 @@ function applyAddLink() {
     day[l.slot] = [...new Set([...(day[l.slot] || []), ...ids])].filter(id => byId.has(id)).sort((a, b) => rank(byId.get(a).step) - rank(byId.get(b).step));
   }
   const n = l.items.length; clearAddLink(); saveTemplate(tpl);
-  toast(`Added ${n === 1 ? l.items[0].name : n + " products"} to every ${l.slot === "am" ? "morning" : "evening"}.`);
+  toast(`Added ${n === 1 ? l.items[0].name : n + " products"} to your ${l.slot === "am" ? "mornings" : "evenings"}.`);
 }
 function addProduct(p) {
   const tpl = structuredClone(state.template || { products: [], week: {} });
