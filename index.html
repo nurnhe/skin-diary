@@ -64,7 +64,7 @@ body { min-height: 100%; color: var(--ink); font: 300 15px/1.55 var(--sans);
   .brand h1 { font-size: 40px }
   .brand .eyebrow { display: none }
   .wrap { padding-block: 16px calc(96px + env(safe-area-inset-bottom, 0px)); gap: 18px }
-  .bottom-nav { display: grid; grid-template-columns: repeat(5, 1fr); position: fixed; left: 0; right: 0; bottom: 0; z-index: 15;
+  .bottom-nav { display: grid; grid-template-columns: repeat(4, 1fr); position: fixed; left: 0; right: 0; bottom: 0; z-index: 15;
     padding: 6px max(8px, env(safe-area-inset-left, 0px)) calc(6px + env(safe-area-inset-bottom, 0px)) max(8px, env(safe-area-inset-right, 0px));
     background: var(--surface); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); border-top: 1px solid var(--line) }
   .bottom-nav button { border: 0; background: none; display: grid; justify-items: center; gap: 2px; padding: 6px 0; font-size: 11.5px; font-weight: 500; color: var(--muted); border-radius: 14px; -webkit-tap-highlight-color: transparent }
@@ -352,6 +352,10 @@ button.mini { font: inherit; font-size: 11.5px; cursor: pointer }
 }
 
 .panel { padding: 22px; display: grid; gap: 14px; min-width: 0 }
+.scope { display: inline-grid; grid-template-columns: auto auto; gap: 3px; padding: 3px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); justify-self: start }
+.scope button { border: 0; border-radius: 999px; padding: 7px 14px; min-height: 36px; font: inherit; font-size: 13px; background: transparent; color: var(--muted); cursor: pointer }
+.scope button[aria-pressed="true"] { background: var(--ink); color: var(--bg); font-weight: 500 }
+.small-note { margin: 0; font-size: 13px }
 .tpl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px }
 .tpl-grid .day-head { flex-direction: row }
 .empty-state { text-align: center; padding: 48px 20px; display: grid; gap: 12px; justify-items: center }
@@ -505,7 +509,6 @@ button.mini { font: inherit; font-size: 11.5px; cursor: pointer }
     </div>
     <nav class="tabs" role="tablist" aria-label="Views">
       <button role="tab" data-act="tab" data-tab="week" aria-selected="true">Calendar</button>
-      <button role="tab" data-act="tab" data-tab="template" aria-selected="false">Weekly template</button>
       <button role="tab" data-act="tab" data-tab="products" aria-selected="false">Products</button>
       <button role="tab" data-act="tab" data-tab="skin" aria-selected="false">Skin</button>
     </nav>
@@ -517,7 +520,6 @@ button.mini { font: inherit; font-size: 11.5px; cursor: pointer }
 <nav class="bottom-nav" aria-label="Views">
   <button data-act="tab" data-tab="today"><svg viewBox="0 0 24 24" aria-hidden="true" data-nav="today"></svg><span>Today</span></button>
   <button data-act="tab" data-tab="week"><svg viewBox="0 0 24 24" aria-hidden="true" data-nav="week"></svg><span>Week</span></button>
-  <button data-act="tab" data-tab="template"><svg viewBox="0 0 24 24" aria-hidden="true" data-nav="template"></svg><span>Routine</span></button>
   <button data-act="tab" data-tab="products"><svg viewBox="0 0 48 48" aria-hidden="true" data-nav="products"></svg><span>Shelf</span></button>
   <button data-act="tab" data-tab="skin"><svg viewBox="0 0 24 24" aria-hidden="true" data-nav="skin"></svg><span>Skin</span></button>
 </nav>
@@ -948,7 +950,6 @@ function render() {
   else if (tab === "today") main.innerHTML = state.template ? renderToday() : emptyState();
   else if (tab === "week") main.innerHTML = state.template ? (isMobile() ? renderWeek() : renderToday() + renderWeek()) : emptyState();
   else if (tab === "skin") main.innerHTML = state.template ? renderSkin() : emptyState();
-  else if (tab === "template") main.innerHTML = state.template ? renderTemplate() : emptyState();
   else main.innerHTML = renderProducts();
   renderSheet();
 }
@@ -1124,22 +1125,10 @@ function renderWeek() {
       <div class="pager"><button class="btn small" data-act="week" data-n="-1" aria-label="Previous week">←</button>
       <button class="btn small" data-act="week" data-n="0">This week</button>
       <button class="btn small" data-act="week" data-n="1" aria-label="Next week">→</button></div></div>
+    <p class="muted" style="margin:0;max-width:62ch">Tap a day to log it or change its products, for just that date or for every same weekday.</p>
     <div class="week">${cells}</div>
     ${legend()}
   </section>`;
-}
-function renderTemplate() {
-  const order = [1, 2, 3, 4, 5, 6, 0];
-  const cards = order.map(dow => {
-    const t = tplDay(dow), am = orderSort(sortIds(t.am || []), "am"), pm = orderSort(sortIds(t.pm || []), "pm");
-    return `<button class="glass day" data-act="open-tpl" data-dow="${dow}" aria-label="Edit ${DOW[dow]} template">
-      <div class="day-head"><h3>${DOW[dow]}</h3></div>
-      ${t.label ? `<span class="tag">${esc(t.label)}</span>` : ""}
-      ${slotList("am", am)}${slotList("pm", pm)}</button>`;
-  }).join("");
-  return `<section style="display:grid;gap:14px"><div class="weekbar"><h2>Your <em>usual</em> week</h2></div>
-    <p class="muted" style="margin:0;max-width:60ch">Every calendar day follows this template unless you edit that day. Tap a weekday to change it.</p>
-    <div class="tpl-grid">${cards}</div>${legend()}</section>`;
 }
 /* Where a shelf product is used in the weekly routine, e.g. "Every morning · Mon, Fri evenings". */
 function routineSummary(p) {
@@ -1352,7 +1341,9 @@ function renderSheet() {
   } else if (s.type === "day") {
     const d = fromKey(s.key), r = routineFor(s.key), day = r.day;
     title = d.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
-    sub = r.label ? esc(r.label) : "From your weekly template";
+    sub = r.label ? esc(r.label) : "From your usual week";
+    const dow = d.getDay(), every = s.scope === "dow", wd = DOW[dow], t = tplDay(dow);
+    const scope = `<div class="scope" role="group" aria-label="Change for"><button type="button" data-act="scope" data-scope="day" aria-pressed="${!every}">Just this day</button><button type="button" data-act="scope" data-scope="dow" aria-pressed="${every}">Every ${wd}</button></div>`;
     const sec = slot => `<div class="sec ${slot}">
       <div class="sec-head"><h3>${slot === "am" ? "Morning" : "Evening"}</h3>
         <button class="done-btn" data-act="done-all" data-key="${s.key}" data-slot="${slot}" aria-pressed="${r[slot + "Done"]}">${r[slot + "Done"] ? "✓ All done" : "Tick all"}</button></div>
@@ -1360,9 +1351,11 @@ function renderSheet() {
       ${steps(s.key, r, slot, true)}
       ${oneOffRow(s.key, slot)}
       ${rateRow(s.key, slot, day, slot === "am" ? "Skin in the morning" : "Skin in the evening")}
-      <details id="plan-${slot}"${state.openPlan?.[slot] ? " open" : ""}><summary>Change products for this day</summary>
-        <div style="display:grid;gap:8px;padding-top:8px">${r["custom" + (slot === "am" ? "Am" : "Pm")] ? `<button class="btn small" data-act="reset" data-slot="${slot}" style="justify-self:start">Back to template</button>` : ""}${picker(slot, r[slot])}</div></details></div>`;
-    body = sec("am") + sec("pm") + `
+      <details id="plan-${slot}"${state.openPlan?.[slot] ? " open" : ""}><summary>Change products</summary>
+        <div style="display:grid;gap:8px;padding-top:8px">${scope}
+        ${every ? `<p class="muted small-note">Changes every ${wd} from now on. Days you changed by hand keep their own products.</p>${picker(slot, sortIds(t[slot] || []))}`
+          : `${r["custom" + (slot === "am" ? "Am" : "Pm")] ? `<button class="btn small" data-act="reset" data-slot="${slot}" style="justify-self:start">Back to usual</button>` : ""}${picker(slot, r[slot])}`}</div></details></div>`;
+    body = (every ? `<label class="field">Name for every ${wd}<input class="input" type="text" id="tpl-label" value="${esc(t.label || "")}" placeholder="e.g. Retinol night"></label>` : "") + sec("am") + sec("pm") + `
       <div class="sec plain"><label for="note"><h3>Notes</h3></label>
         <textarea class="input" id="note" rows="4" placeholder="Breakouts, dry patches, a new product you tried…" style="resize:vertical">${esc(day.note || "")}</textarea></div>`;
   } else {
@@ -1387,6 +1380,7 @@ document.addEventListener("click", e => {
   if (act === "tab") { if (el.dataset.tab === "today") { state.dayKey = null; state.slot = null } state.tab = el.dataset.tab; state.sheet = null; render() }
   else if (act === "week") { const n = +el.dataset.n; state.weekStart = n ? addDays(state.weekStart, 7 * n) : mondayOf(new Date()); render() }
   else if (act === "open-day") { state.sheet = { type: "day", key: el.dataset.key }; state.openPlan = {}; render() }
+  else if (act === "scope") { flushNote(); state.sheet.scope = el.dataset.scope; renderSheet() }
   else if (act === "open-tpl") { state.sheet = { type: "tpl", dow: +el.dataset.dow }; render() }
   else if (act === "close") { flushNote(); closeSheet() }
   else if (act === "prod-open") openProd(el.dataset.id)
@@ -1458,7 +1452,7 @@ document.addEventListener("change", e => {
   else if (act === "day-pick" && /^\d{4}-\d{2}-\d{2}$/.test(el.value)) { el.blur(); state.dayKey = el.value === todayKey() ? null : el.value; render() }
   else if (act === "pick") {
     const s = state.sheet, slot = el.dataset.slot, id = el.dataset.id;
-    if (s.type === "day") {
+    if (s.type === "day" && s.scope !== "dow") {
       const day = { ...(state.days[s.key] || {}) }, tplIds = planBase(s.key, slot);
       if (prod(id)?.oneOff) {
         const ex = (day[slot + "Extra"] || []).filter(x => x !== id); if (el.checked) ex.push(id);
@@ -1470,8 +1464,8 @@ document.addEventListener("change", e => {
       saveDay(s.key, day);
     } else {
       const tpl = structuredClone(state.template); tpl.week = tpl.week || {};
-      const t = tpl.week[s.dow] || { am: [], pm: [], label: "" }, cur = t[slot] || [];
-      t[slot] = sortIds(el.checked ? [...cur, id] : cur.filter(x => x !== id)); tpl.week[s.dow] = t; saveTemplate(tpl);
+      const dow = s.dow ?? fromKey(s.key).getDay(), t = tpl.week[dow] || { am: [], pm: [], label: "" }, cur = t[slot] || [];
+      t[slot] = sortIds(el.checked ? [...cur, id] : cur.filter(x => x !== id)); tpl.week[dow] = t; saveTemplate(tpl);
     }
   } else if (act === "prod-step") { const tpl = structuredClone(state.template); tpl.products.find(p => p.id === el.dataset.id).step = +el.value; saveTemplate(tpl) }
 });
@@ -1536,7 +1530,7 @@ function flushNote() {
   const n = document.getElementById("note"), s = state.sheet;
   if (n && s?.type === "day") { clearTimeout(noteTimer); const day = { ...(state.days[s.key] || {}) }; if ((day.note || "") !== n.value) { day.note = n.value; saveDay(s.key, day) } }
   const l = document.getElementById("tpl-label");
-  if (l && s?.type === "tpl") { clearTimeout(labelTimer); const tpl = structuredClone(state.template); tpl.week = tpl.week || {}; const t = tpl.week[s.dow] || { am: [], pm: [], label: "" }; if ((t.label || "") !== l.value.trim()) { t.label = l.value.trim(); tpl.week[s.dow] = t; saveTemplate(tpl) } }
+  if (l && (s?.type === "tpl" || s?.scope === "dow")) { clearTimeout(labelTimer); const dow = s.dow ?? fromKey(s.key).getDay(), tpl = structuredClone(state.template); tpl.week = tpl.week || {}; const t = tpl.week[dow] || { am: [], pm: [], label: "" }; if ((t.label || "") !== l.value.trim()) { t.label = l.value.trim(); tpl.week[dow] = t; saveTemplate(tpl) } }
 }
 document.addEventListener("input", e => {
   if (e.target.id === "imp-text" && state.sheet?.type === "import") state.sheet.text = e.target.value;

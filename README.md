@@ -12,11 +12,10 @@ A weekly skincare calendar: plan morning and evening products for each day, tick
 
 ## Features
 
-- **Phone layout:** a bottom tab bar with Today, Week, Routine, Shelf and Skin. On phones every panel (a day, a product, Add a product) slides up from the bottom.
+- **Phone layout:** a bottom tab bar with Today, Week, Shelf and Skin. On phones every panel (a day, a product, Add a product) slides up from the bottom.
 - **Today:** on phones a Morning / Evening switch opens on the routine for right now (morning before 2 pm). Tap a step to tick it, swipe it left to skip it. When every step is ticked or skipped, a done card shows how many of the last 7 mornings or evenings you did.
 - **Other days:** a week strip on Today (swipe it or use the arrows for other weeks) and a date picker open any day to log it. Dots under each day show a logged morning and evening. Yesterday stays open for logging, and after midnight a hint offers to log last night's evening routine.
-- **Week view:** seven day cards that fill in from a repeating weekly template. Any single day can be edited.
-- **Weekly template:** a default routine for each weekday, for example retinol nights, an exfoliation night and recovery nights.
+- **Week view:** seven day cards that fill in from your usual week. Open a day to change its products for just that date or for every same weekday (for example retinol nights, an exfoliation night and recovery nights).
 - **Products:** your shelf as a grid of tiles with filters (All, In routine, Hair, To buy, Finished), exact product names, a step for each product and an icon. Tap a tile to rate it (1 to 5 stars, also after you finish it), add it to your routine, edit, change its icon or remove it. Warnings flag risky combinations, for example retinol and an acid in the same routine.
 - **Import my routine:** new diaries start empty. Paste a product list, or import an Excel or CSV spreadsheet (`routine-template.xlsx` is a ready-made template) or a Skin Diary routine file.
 - **Finished products:** mark a product as finished, then Repurchase or Won't repurchase. Your routine tags it (Rebuy or Replace), and for products you won't buy again the Shelf suggests alternatives you can add or swap into your weekly routine.
