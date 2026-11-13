@@ -378,6 +378,7 @@ button.mini { font: inherit; font-size: 11.5px; cursor: pointer }
 /* Shelf grid */
 .shelf-head { display: flex; align-items: center; justify-content: space-between; gap: 12px }
 .add-btn { display: inline-flex; align-items: center; gap: 6px }
+.add-btn.fab { display: none }
 .add-btn > span[aria-hidden] { font-size: 20px; line-height: 1; font-weight: 300 }
 .filters { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin-inline: -4px; padding: 2px 4px }
 .filters::-webkit-scrollbar { display: none }
@@ -415,7 +416,9 @@ button.mini { font: inherit; font-size: 11.5px; cursor: pointer }
   .wash-card > .btn { grid-column: 1 / -1; justify-self: start }
 }
 @media (max-width: 700px) {
-  .add-btn { position: fixed; z-index: 14; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(86px + env(safe-area-inset-bottom, 0px)); width: 56px; height: 56px; border-radius: 18px; padding: 0; justify-content: center; box-shadow: var(--shadow-lg) }
+  .shelf-head .add-btn { display: none }
+  /* The phone + sits outside the glass card: backdrop-filter makes the card the containing block for position: fixed, which pinned it over the chips. */
+  .add-btn.fab { display: inline-flex; position: fixed; z-index: 14; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(86px + env(safe-area-inset-bottom, 0px)); width: 56px; height: 56px; border-radius: 18px; padding: 0; justify-content: center; box-shadow: var(--shadow-lg) }
   .add-btn > span[aria-hidden] { font-size: 30px }
   .add-btn .lbl { display: none }
   .shelf-panel { padding: 16px 12px }
@@ -1247,7 +1250,8 @@ function renderProducts() {
   const owned = new Set(shelf().map(p => (p.brand + p.name).toLowerCase()));
   const sugg = SUGGESTIONS.map((s, i) => `<div class="card">${thumb(s, 44)}<span class="eyebrow">${STEPS[s.step]} · ${esc(s.brand)}</span><b>${esc(s.name)}</b><span class="muted" style="font-size:13.5px">${esc(s.why)}</span>
     ${owned.has((s.brand + s.name).toLowerCase()) ? `<span class="muted" style="font-size:13px">✓ In your products</span>` : `<div class="btns" style="display:flex;flex-wrap:wrap;gap:6px"><button class="btn small" data-act="add-sugg" data-i="${i}">I bought this</button>${buyBtn(s, `data-src="sugg" data-i="${i}"`)}</div>`}</div>`).join("");
-  return `<section class="glass panel shelf-panel"><div class="shelf-head"><h2>Your <em>shelf</em></h2>
+  return `<button class="btn primary add-btn fab" data-act="add-open" aria-label="Add a product"><span aria-hidden="true">+</span></button>
+    <section class="glass panel shelf-panel"><div class="shelf-head"><h2>Your <em>shelf</em></h2>
       <button class="btn primary add-btn" data-act="add-open" aria-label="Add a product"><span aria-hidden="true">+</span><span class="lbl">Add product</span></button></div>
       <div class="filters" role="group" aria-label="Show">${chips.map(([id, l, n]) => `<button data-act="shelf-filter" data-f="${id}" aria-pressed="${f === id}">${l}<span class="count">${n}</span></button>`).join("")}</div>
       ${body}
